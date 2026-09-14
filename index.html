@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Do Zero ao Primeiro Produto — Programa Prático</title>
+<style>
+:root{
+  --bg:#050806;--panel:#0b110d;--panel2:#0e1711;--g:#7CFF00;--txt:#f4f7f4;
+  --mut:#a8b2a9;--line:#1d2a20;--warn:#f1c45a;--danger:#ff7b7b;--shadow:0 14px 40px rgba(0,0,0,.28)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,Arial,sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.shell{display:grid;grid-template-columns:292px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;background:#071009;border-right:1px solid var(--line);padding:18px;overflow:auto}
+.brand{font-size:19px;font-weight:950;line-height:1.08}
+.brand span{color:var(--g)}
+.subbrand{font-size:12px;color:var(--mut);margin-top:6px}
+.progress-wrap{margin:20px 0 8px}
+.progress{height:8px;background:#142018;border-radius:999px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--g);transition:.25s}
+.progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:7px}
+.nav{display:grid;gap:8px;margin-top:20px}
+.nav button{width:100%;text-align:left;padding:12px 13px;border-radius:13px;border:1px solid var(--line);background:var(--panel);color:var(--txt)}
+.nav button.active{border-color:#45662d;background:#0d180f}
+.nav button.done:after{content:" ✓";color:var(--g);font-weight:900}
+.side-note{font-size:12px;line-height:1.5;color:#cad3cb;background:#0a130b;border:1px solid #335127;border-radius:13px;padding:13px;margin-top:18px}
+.main{padding:28px 24px 72px}
+.wrap{width:min(1040px,100%);margin:auto}
+.section{display:none}
+.section.active{display:block}
+.pill{display:inline-flex;align-items:center;gap:8px;color:var(--g);font-size:12px;font-weight:900;letter-spacing:.1em;border:1px solid #345324;background:#0a130b;border-radius:999px;padding:7px 11px}
+h1{font-size:clamp(38px,6.5vw,68px);line-height:.98;letter-spacing:-.045em;margin:12px 0}
+h2{font-size:clamp(28px,4.5vw,44px);line-height:1.06;letter-spacing:-.035em;margin:8px 0 16px}
+h3{margin:0 0 10px}
+.lead{font-size:17px;line-height:1.62;color:#cbd2cc;max-width:820px}
+.muted{color:var(--mut)}
+.small{font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.card.glow{border-color:#385929;background:linear-gradient(145deg,#0d1710,#09100a)}
+.lesson{border-left:3px solid var(--g)}
+.lesson .num{color:var(--g);font-weight:950;font-size:12px;letter-spacing:.08em}
+.lesson p{color:var(--mut);line-height:1.58}
+.section-gap{margin-top:16px}
+.fields{display:grid;gap:14px}
+.field label{display:block;font-weight:850;margin-bottom:7px}
+.field small{display:block;color:var(--mut);margin-top:5px}
+input,textarea,select{width:100%;background:#071009;color:var(--txt);border:1px solid #29352d;border-radius:12px;padding:12px;outline:none}
+textarea{min-height:100px;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:#56843a}
+.btn{border:0;background:var(--g);color:#061006;font-weight:950;border-radius:12px;padding:12px 16px}
+.btn.secondary{background:#111a13;color:var(--txt);border:1px solid var(--line)}
+.btn.ghost{background:transparent;color:var(--g);border:1px solid #345422}
+.btn.warn{background:var(--warn);color:#171200}
+.row{display:flex;gap:9px;flex-wrap:wrap}
+.hr{height:1px;background:var(--line);margin:20px 0}
+.notice{border:1px solid #365425;background:#0a130b;border-radius:13px;padding:14px;color:#cad3cb;line-height:1.55}
+.warnbox{border:1px solid #5a4a23;background:#161207;border-radius:13px;padding:14px;color:#e4d9b1;line-height:1.5}
+.ai{border:1px solid #3b5d2b;background:linear-gradient(145deg,#0d1710,#09100a);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+.ai .status{font-size:11px;color:var(--warn);font-weight:900;letter-spacing:.08em}
+.ai-response{white-space:pre-wrap;background:#08100a;border:1px solid #35502c;border-radius:12px;padding:14px;color:#eef6ef;max-height:360px;overflow:auto;margin-top:12px}.prompt{white-space:pre-wrap;background:#050806;border:1px dashed #35502c;border-radius:12px;padding:14px;color:#d8e1d9;max-height:320px;overflow:auto}
+.summary{display:grid;gap:8px}
+.summary .item{background:#08100a;border:1px solid var(--line);border-radius:12px;padding:12px}
+.summary .item b{color:var(--g)}
+.rescue{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.rescue button{border:1px solid var(--line);background:#101712;color:#dce5dd;border-radius:999px;padding:8px 11px;font-size:12px}
+.kpi{font-size:30px;font-weight:950;color:var(--g)}
+.central .stage-card{border-left:3px solid #26352a}
+.central .stage-card.complete{border-left-color:var(--g)}
+.central .stage-card.current{border-left-color:var(--warn)}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+.checks input{width:auto;margin-top:3px}
+.finish{border:1px solid var(--g);background:radial-gradient(circle at 70% 0,rgba(124,255,0,.12),transparent 38%),#0b110d}
+.finish h2{font-size:clamp(34px,6vw,58px)}
+.footer-note{font-size:12px;color:var(--mut);line-height:1.5;margin-top:24px}
+.toast{position:fixed;right:18px;bottom:18px;z-index:50;background:#111a13;color:#fff;border:1px solid #345326;border-radius:12px;padding:12px 14px;display:none}
+@media(max-width:900px){
+ .shell{grid-template-columns:1fr}
+ .sidebar{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+ .nav{grid-template-columns:repeat(2,1fr)}
+ .main{padding:22px 15px 60px}
+ .grid,.grid3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand">DO ZERO AO<br><span>PRIMEIRO PRODUTO</span></div>
+  <div class="subbrand">Programa Prático • Fluxo completo</div>
+  <div class="progress-wrap">
+    <div class="progress"><i id="progressBar"></i></div>
+    <div class="progress-meta"><span>Progresso</span><span id="progressText">0%</span></div>
+  </div>
+  <div class="nav">
+    <button data-go="central" class="active">Central de Execução</button>
+    <button data-go="start">Comece Aqui</button>
+    <button data-go="stage1">1. Descobrir</button>
+    <button data-go="stage2">2. Validar</button>
+    <button data-go="stage3">3. Criar</button>
+    <button data-go="stage4">4. Ofertar</button>
+    <button data-go="stage5">5. Publicar</button>
+    <button data-go="finish">Conclusão</button>
+  </div>
+  <div class="side-note"><b style="color:var(--g)">IA SUGERE. VOCÊ VALIDA.</b><br>Esta versão já está preparada para usar um backend seguro. A chave da IA nunca fica no HTML do aluno.</div>
+    <div class="side-note" id="aiUsageCard"><b>Usos de IA — ambiente de teste</b><br><span id="aiUsageText">Verificando backend...</span><br><span class="small">O número comercial de usos ainda não foi definido.</span></div>
+</aside>
+
+<main class="main"><div class="wrap">
+
+<section id="central" class="section active central">
+  <div class="pill">CENTRAL DE EXECUÇÃO</div>
+  <h1>Seu caminho inteiro em <span style="color:var(--g)">uma tela.</span></h1>
+  <p class="lead">O que você preencher em uma etapa acompanha você automaticamente. Aqui você vê progresso, decisões e próximos passos sem precisar procurar informação.</p>
+
+  <div class="grid3 section-gap">
+    <div class="card"><div class="kpi" id="kpiAnswers">0</div><div class="muted">dados salvos</div></div>
+    <div class="card"><div class="kpi" id="kpiStages">0/5</div><div class="muted">etapas concluídas</div></div>
+    <div class="card"><div class="kpi" id="kpiIdeas">0</div><div class="muted">ideias registradas</div></div>
+  </div>
+
+  <div class="grid section-gap">
+    <div class="card glow">
+      <h3>Próximo passo recomendado</h3>
+      <p id="nextStep" class="lead" style="font-size:16px">Comece pelo Mapa de Ativos Pessoais.</p>
+      <button class="btn" id="nextBtn" onclick="goNext()">Ir para o próximo passo →</button>
+    </div>
+    <div class="card">
+      <h3>Decisão principal atual</h3>
+      <div id="decisionSummary" class="summary"></div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+  <div id="centralCards" class="grid"></div>
+</section>
+
+<section id="start" class="section">
+  <div class="pill">COMECE AQUI</div>
+  <h2>Você não precisa descobrir o produto perfeito.</h2>
+  <p class="lead">Seu objetivo é construir uma primeira versão pequena, coerente e testável. O programa vai levar você de uma ideia solta até uma oferta publicada.</p>
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">COMO FUNCIONA</div><h3>Uma etapa de cada vez</h3><p>Responda com fatos reais sobre você e seu público. O sistema reaproveita automaticamente essas respostas nas etapas seguintes.</p></div>
+    <div class="card lesson"><div class="num">REGRA 1</div><h3>IA não decide por você</h3><p>A IA pode sugerir, comparar e organizar. Validação exige sinais reais, conversas e julgamento humano.</p></div>
+    <div class="card lesson"><div class="num">REGRA 2</div><h3>Comece pequeno</h3><p>Não tente criar uma plataforma enorme. O objetivo é uma V1 útil que você consiga colocar na frente de pessoas reais.</p></div>
+    <div class="card lesson"><div class="num">REGRA 3</div><h3>Sem promessas mágicas</h3><p>O programa não garante vendas ou renda. Ele ajuda você a tomar decisões melhores e executar com mais clareza.</p></div>
+  </div>
+  <div class="row section-gap"><button class="btn" onclick="show('stage1')">Começar Etapa 1 →</button></div>
+</section>
+
+<section id="stage1" class="section">
+  <div class="pill">ETAPA 1 • DESCOBRIR</div>
+  <h2>Descubra o que você pode transformar em produto</h2>
+  <p class="lead">Antes de escolher uma ideia, vamos mapear o que você já viveu, sabe fazer e consegue explicar. Isso reduz o risco de criar algo completamente desconectado de você.</p>
+
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">MICROAULA 1</div><h3>Conhecimento vendável não é só diploma</h3><p>Experiência profissional, rotinas, atalhos, organização, atendimento, ferramentas e processos podem virar ativos de produto.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 2</div><h3>Comece por problemas conhecidos</h3><p>Uma habilidade se torna mais interessante quando resolve algo específico para alguém específico.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 3</div><h3>Ideia boa é hipótese, não certeza</h3><p>Nesta etapa você vai gerar possibilidades. A escolha final só vem depois da validação.</p></div>
+  </div>
+
+  <div class="grid section-gap">
+    <div class="card">
+      <h3>Ferramenta 01 — Mapa de Ativos Pessoais</h3>
+      <div class="fields">
+        <div class="field"><label>Experiências profissionais</label><textarea id="s1_experiencias" data-save placeholder="Ex.: atendimento técnico, instalação, logística, vendas..."></textarea></div>
+        <div class="field"><label>Habilidades práticas</label><textarea id="s1_habilidades" data-save placeholder="O que você sabe fazer de verdade?"></textarea></div>
+        <div class="field"><label>Problemas que já resolveu</label><textarea id="s1_problemas" data-save></textarea></div>
+        <div class="field"><label>Assuntos que sabe explicar</label><textarea id="s1_assuntos" data-save></textarea></div>
+        <div class="field"><label>Por que as pessoas pedem sua ajuda?</label><textarea id="s1_ajuda" data-save></textarea></div>
+        <div class="field"><label>Públicos ou ambientes que você conhece</label><textarea id="s1_publicos" data-save></textarea></div>
+      </div>
+      <div class="row section-gap"><button class="btn" onclick="prepareStage1()">Salvar e preparar análise →</button></div>
+    </div>
+
+    <div class="ai">
+      <div class="status">BACKEND SEGURO • MODO DE TESTE</div>
+      <h3>✨ Explorador de Possibilidades</h3>
+      <p class="muted" id="s1_loaded">Preencha seu mapa para conectar os dados.</p>
+      <div class="notice small" style="margin-top:10px">Neste ambiente de teste, o backend simula a resposta da IA sem consumir API paga. Quando ativarmos a API real, o mesmo fluxo será mantido.</div>
+      <div class="summary" id="s1_summary"></div>
+      <div class="hr"></div>
+      <div class="row">
+        <button class="btn" onclick="runAI(1,'main')">✨ Analisar com IA</button>
+        
+        <button class="btn ghost" onclick="copyPrompt(1)">Copiar prompt</button>
+      </div>
+      <div id="prompt1" class="prompt section-gap">Seu prompt personalizado aparecerá aqui.</div><div id="aiResponse1" class="ai-response" style="display:none"></div>
+      <div class="rescue">
+        <button onclick="runAI(1,\'especificas\')">Gerar opções mais específicas</button>
+        <button onclick="runAI(1,\'dados\')">Usar somente meus dados</button>
+        <button onclick="runAI(1,\'outras\')">Mostrar outras possibilidades</button>
+      </div>
+      <div class="hr"></div>
+      <h3>3 ideias para investigar</h3>
+      <div class="fields">
+        <input id="s1_idea1" data-save placeholder="Ideia 1">
+        <input id="s1_idea2" data-save placeholder="Ideia 2">
+        <input id="s1_idea3" data-save placeholder="Ideia 3">
+      </div>
+      <div class="row section-gap"><button class="btn" onclick="completeStage(1)">Concluir Etapa 1 →</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="stage2" class="section">
+  <div class="pill">ETAPA 2 • VALIDAR</div>
+  <h2>Escolha uma ideia com base em sinais reais</h2>
+  <p class="lead">Agora saímos de “parece interessante” e começamos a procurar evidências. O objetivo não é provar que a ideia vai vender; é reduzir incerteza antes de construir.</p>
+
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">MICROAULA 1</div><h3>Validação não é perguntar “você compraria?”</h3><p>Pergunte sobre problemas reais, frequência, tentativas anteriores e consequências. Comportamento passado costuma ser mais útil que intenção futura.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 2</div><h3>Sinais diretos e indiretos</h3><p>Conversas, buscas, comentários, concorrentes e perguntas repetidas podem indicar interesse. Nenhum sinal sozinho garante demanda.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 3</div><h3>Escolha pelo conjunto</h3><p>Considere problema claro, sua proximidade com o tema, facilidade de produzir e qualidade das evidências.</p></div>
+  </div>
+
+  <div class="card glow section-gap">
+    <h3>Ideias carregadas automaticamente</h3>
+    <div id="s2_ideasLoaded" class="summary"></div>
+  </div>
+
+  <div class="grid section-gap">
+    <div class="card">
+      <h3>Ferramenta 02 — Matriz de Seleção</h3>
+      <div class="fields">
+        <div class="field"><label>Qual ideia mais combina com sua experiência?</label>
+          <select id="s2_fit" data-save data-idea-select><option value="">Selecione uma das suas ideias...</option></select>
+        </div>
+        <div class="field"><label>Qual resolve o problema mais claro?</label>
+          <select id="s2_problem" data-save data-idea-select><option value="">Selecione uma das suas ideias...</option></select>
+        </div>
+        <div class="field"><label>Qual você consegue testar mais rápido?</label>
+          <select id="s2_small" data-save data-idea-select><option value="">Selecione uma das suas ideias...</option></select>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <h3>Ferramenta 03 — Ficha de Validação</h3>
+      <div class="fields">
+        <div class="field"><label>Evidências indiretas</label><textarea id="s2_evidencias" data-save placeholder="Buscas, comentários, concorrentes, fóruns, perguntas..."></textarea></div>
+        <div class="field"><label>O que pessoas reais disseram?</label><textarea id="s2_conversas" data-save placeholder="Registre padrões sem inventar conclusões."></textarea></div>
+        <div class="field"><label>O que ainda é hipótese?</label><textarea id="s2_hipoteses" data-save></textarea></div>
+      </div>
+    </div>
+
+    <div class="ai">
+      <div class="status">BACKEND SEGURO • DADOS CONECTADOS</div>
+      <h3>✨ Comparador de Ideias</h3>
+      <div class="row"><button class="btn" onclick="runAI(2,'main')">✨ Comparar com IA</button><button class="btn ghost" onclick="copyPrompt(2)">Copiar prompt</button></div>
+      <div id="prompt2" class="prompt section-gap">Preencha as evidências para preparar a comparação.</div><div id="aiResponse2" class="ai-response" style="display:none"></div>
+      <div class="rescue">
+        <button onclick="runAI(2,\'simplificar\')">Simplificar análise</button>
+        <button onclick="runAI(2,\'evidencias\')">Separar fato de hipótese</button>
+        <button onclick="runAI(2,\'riscos\')">Mostrar riscos</button>
+      </div>
+      <div class="hr"></div>
+      <div class="field"><label>Ideia escolhida para avançar</label><select id="s2_escolhida" data-save><option value="">Selecione...</option></select></div>
+      <div class="field"><label>Por que esta ideia merece uma V1?</label><textarea id="s2_justificativa" data-save></textarea></div>
+      <div class="row"><button class="btn" onclick="completeStage(2)">Concluir Etapa 2 →</button></div>
+    </div>
+  </div>
+</section>
+
+<section id="stage3" class="section">
+  <div class="pill">ETAPA 3 • CRIAR</div>
+  <h2>Construa a menor versão útil</h2>
+  <p class="lead">Você não precisa construir tudo. Precisa entregar uma transformação pequena, clara e coerente com o problema validado.</p>
+
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">MICROAULA 1</div><h3>V1 é recorte, não produto incompleto</h3><p>Uma boa V1 resolve um pedaço importante do problema. Ela deixa recursos extras para depois.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 2</div><h3>Escolha o formato pela entrega</h3><p>Guia, checklist, templates, planilha ou mini programa: use o formato mais simples que permita gerar o resultado.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 3</div><h3>Estrutura antes de acabamento</h3><p>Primeiro organize a jornada. Design sofisticado vem depois que a utilidade estiver clara.</p></div>
+  </div>
+
+  <div class="notice section-gap"><b>Ideia escolhida:</b> <span id="s3_chosen">Nenhuma ideia escolhida ainda.</span></div>
+
+  <div class="grid section-gap">
+    <div class="card">
+      <h3>Ferramenta 04 — Recorte da Transformação</h3>
+      <div class="fields">
+        <div class="field"><label>Pessoa específica</label><input id="s3_publico" data-save></div>
+        <div class="field"><label>Ponto A — onde ela está agora?</label><textarea id="s3_pontoA" data-save></textarea></div>
+        <div class="field"><label>Ponto B — qual pequeno resultado queremos entregar?</label><textarea id="s3_pontoB" data-save></textarea></div>
+      </div>
+      <div class="hr"></div>
+      <h3>Ferramenta 05 — Construtor da V1</h3>
+      <div class="fields">
+        <div class="field"><label>Formato</label><select id="s3_formato" data-save><option value="">Selecione...</option><option>Guia prático</option><option>Checklist</option><option>Planilha</option><option>Templates</option><option>Mini curso</option><option>Programa guiado</option><option>Outro</option></select></div>
+        <div class="field"><label>Partes indispensáveis</label><textarea id="s3_partes" data-save></textarea></div>
+        <div class="field"><label>O que fica para uma versão futura?</label><textarea id="s3_depois" data-save></textarea></div>
+      </div>
+    </div>
+
+    <div class="ai">
+      <div class="status">BACKEND SEGURO • IDEIA VALIDADA CONECTADA</div>
+      <h3>✨ Arquiteto da V1</h3>
+      <div class="row"><button class="btn" onclick="runAI(3,'main')">✨ Estruturar com IA</button><button class="btn ghost" onclick="copyPrompt(3)">Copiar prompt</button></div>
+      <div id="prompt3" class="prompt section-gap">Preencha os campos para preparar a estrutura.</div><div id="aiResponse3" class="ai-response" style="display:none"></div>
+      <div class="rescue">
+        <button onclick="runAI(3,\'menor\')">Deixar menor</button>
+        <button onclick="runAI(3,\'pratico\')">Tornar mais prático</button>
+        <button onclick="runAI(3,\'excesso\')">Cortar excessos</button>
+      </div>
+      <div class="hr"></div>
+      <div class="field"><label>Nome provisório da V1</label><input id="s3_nome" data-save></div>
+      <div class="field"><label>Resumo final da V1</label><textarea id="s3_resumo" data-save></textarea></div>
+      <button class="btn" onclick="completeStage(3)">Concluir Etapa 3 →</button>
+    </div>
+  </div>
+</section>
+
+<section id="stage4" class="section">
+  <div class="pill">ETAPA 4 • OFERTAR</div>
+  <h2>Transforme o produto em uma oferta compreensível</h2>
+  <p class="lead">Uma oferta não é só preço. Ela explica para quem é, o que entrega, por que importa e quais limites existem.</p>
+
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">MICROAULA 1</div><h3>Clareza vence exagero</h3><p>Promessas grandiosas podem até chamar atenção, mas aumentam desconfiança e expectativa errada.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 2</div><h3>Benefício é mudança percebida</h3><p>“7 ferramentas” é característica. “Saber qual é o próximo passo” é benefício.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 3</div><h3>Preço inicial é hipótese</h3><p>Você pode começar com um valor simples, observar resposta e ajustar depois. Não precisa descobrir o preço perfeito no primeiro dia.</p></div>
+  </div>
+
+  <div class="card glow section-gap"><h3>Produto carregado automaticamente</h3><div id="s4_productSummary" class="summary"></div></div>
+
+  <div class="grid section-gap">
+    <div class="card">
+      <h3>Ferramenta 06 — Ficha da Oferta</h3>
+      <div class="fields">
+        <div class="field"><label>Para quem é?</label><input id="s4_paraquem" data-save></div>
+        <div class="field"><label>Qual problema ajuda a resolver?</label><textarea id="s4_problema" data-save></textarea></div>
+        <div class="field"><label>O que a pessoa recebe?</label><textarea id="s4_recebe" data-save></textarea></div>
+        <div class="field"><label>Benefício principal</label><textarea id="s4_beneficio" data-save></textarea></div>
+        <div class="field"><label>Preço inicial</label><input id="s4_preco" data-save placeholder="Ex.: R$ 37"></div>
+        <div class="field"><label>O que não vamos prometer?</label><textarea id="s4_limites" data-save placeholder="Ex.: renda garantida, vendas garantidas, prazo garantido..."></textarea></div>
+      </div>
+    </div>
+
+    <div class="ai">
+      <div class="status">BACKEND SEGURO • PRODUTO CONECTADO</div>
+      <h3>✨ Editor da Oferta</h3>
+      <div class="row"><button class="btn" onclick="runAI(4,'main')">✨ Melhorar com IA</button><button class="btn ghost" onclick="copyPrompt(4)">Copiar prompt</button></div>
+      <div id="prompt4" class="prompt section-gap">Preencha a ficha para preparar a oferta.</div><div id="aiResponse4" class="ai-response" style="display:none"></div>
+      <div class="rescue">
+        <button onclick="runAI(4,\'menos_promessa\')">Reduzir promessa</button>
+        <button onclick="runAI(4,\'mais_clara\')">Deixar mais clara</button>
+        <button onclick="runAI(4,\'beneficios\')">Melhorar benefícios</button>
+      </div>
+      <div class="hr"></div>
+      <div class="field"><label>Frase principal da oferta</label><textarea id="s4_ofertaFinal" data-save></textarea></div>
+      <div class="field"><label>CTA</label><input id="s4_cta" data-save placeholder="Ex.: Quero começar meu primeiro produto"></div>
+      <button class="btn" onclick="completeStage(4)">Concluir Etapa 4 →</button>
+    </div>
+  </div>
+</section>
+
+<section id="stage5" class="section">
+  <div class="pill">ETAPA 5 • PUBLICAR</div>
+  <h2>Coloque a primeira versão no mercado</h2>
+  <p class="lead">Publicar não é “terminar”. É começar a aprender com pessoas reais. Sua primeira divulgação serve tanto para vender quanto para entender objeções e melhorar.</p>
+
+  <div class="grid section-gap">
+    <div class="card lesson"><div class="num">MICROAULA 1</div><h3>Use os canais que você já consegue acessar</h3><p>Não precisa estar em todas as redes. Comece pelos lugares em que você consegue conversar e observar resposta.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 2</div><h3>Divulgação não é só “compre agora”</h3><p>Explique o problema, conte a transformação, mostre bastidores e convide pessoas interessadas a conhecer a oferta.</p></div>
+    <div class="card lesson"><div class="num">MICROAULA 3</div><h3>Aprenda antes de reconstruir</h3><p>Uma objeção não exige refazer tudo. Registre padrões antes de alterar nome, preço ou produto.</p></div>
+  </div>
+
+  <div class="card glow section-gap"><h3>Oferta carregada automaticamente</h3><div id="s5_offerSummary" class="summary"></div></div>
+
+  <div class="grid section-gap">
+    <div class="card">
+      <h3>Ferramenta 07 — Primeiras Divulgações</h3>
+      <div class="fields">
+        <div class="field"><label>Onde o produto ficará disponível?</label><input id="s5_plataforma" data-save placeholder="Página + checkout, plataforma, link..."></div>
+        <div class="field"><label>Canais que você realmente consegue usar</label><textarea id="s5_canais" data-save placeholder="WhatsApp, Instagram, Facebook..."></textarea></div>
+        <div class="field"><label>Mensagem principal</label><textarea id="s5_mensagem" data-save></textarea></div>
+        <div class="field"><label>Plano inicial de 7 dias</label><textarea id="s5_plano" data-save></textarea></div>
+        <div class="field"><label>Resultados e aprendizados</label><textarea id="s5_resultados" data-save placeholder="Interesse, dúvidas, objeções, cliques, conversas..."></textarea><small>Registre pelo menos um aprendizado real antes de concluir o programa.</small></div>
+      </div>
+    </div>
+
+    <div class="ai">
+      <div class="status">BACKEND SEGURO • OFERTA CONECTADA</div>
+      <h3>✨ Plano Orgânico de 7 Dias</h3>
+      <div class="row"><button class="btn" onclick="runAI(5,'main')">✨ Criar plano com IA</button><button class="btn ghost" onclick="copyPrompt(5)">Copiar prompt</button></div>
+      <div id="prompt5" class="prompt section-gap">Preencha os canais para preparar o plano.</div><div id="aiResponse5" class="ai-response" style="display:none"></div>
+      <div class="rescue">
+        <button onclick="runAI(5,\'mais_simples\')">Simplificar plano</button>
+        <button onclick="runAI(5,\'sem_anuncios\')">Somente orgânico</button>
+        <button onclick="runAI(5,\'whatsapp\')">Priorizar WhatsApp</button>
+      </div>
+      <div class="hr"></div>
+      <div class="notice small" style="margin-bottom:10px"><b>Para concluir o programa:</b> preencha a mensagem principal, o plano de 7 dias e os aprendizados; depois confirme os quatro itens abaixo. Assim a etapa só termina depois que o produto foi realmente colocado em condições de mercado.</div>
+      <div class="checks">
+        <label><input type="checkbox" id="s5_ck1" data-save> Produto disponível para acesso/compra.</label>
+        <label><input type="checkbox" id="s5_ck2" data-save> Checkout e acesso testados.</label>
+        <label><input type="checkbox" id="s5_ck3" data-save> Primeira divulgação feita.</label>
+        <label><input type="checkbox" id="s5_ck4" data-save> Aprendizados registrados.</label>
+      </div>
+      <button class="btn" onclick="completeStage(5)">Concluir Programa ✓</button>
+    </div>
+  </div>
+</section>
+
+<section id="finish" class="section">
+  <div class="card finish">
+    <div class="pill">CONCLUSÃO</div>
+    <h2>Você saiu do zero e construiu uma <span style="color:var(--g)">primeira versão real.</span></h2>
+    <p class="lead">Agora o objetivo muda: observar resposta, conversar com pessoas, corrigir o que for necessário e melhorar sem transformar cada dúvida em uma reconstrução completa.</p>
+
+    <div class="grid section-gap">
+      <div class="card"><h3>Seu produto</h3><div id="finalProduct" class="summary"></div></div>
+      <div class="card"><h3>Sua oferta</h3><div id="finalOffer" class="summary"></div></div>
+    </div>
+
+    <div class="notice section-gap">
+      <b style="color:var(--g)">Próximo ciclo:</b> primeira venda → feedback → pequenos ajustes → 10 vendas → aprender novamente. O programa não promete que isso acontecerá em um prazo específico.
+    </div>
+
+    <div class="row section-gap">
+      <button class="btn" onclick="show('central')">Voltar à Central</button>
+      <button class="btn secondary" onclick="exportSummary()">Baixar resumo do projeto</button>
+      <button class="btn secondary" onclick="resetAll()">Reiniciar teste</button>
+    </div>
+  </div>
+</section>
+
+<div class="footer-note">Protótipo funcional local. Neste estágio, os dados ficam salvos no navegador do aparelho. Para a versão comercial, login, salvamento na nuvem, créditos da IA, segurança e API devem ficar em backend seguro — nunca dentro do HTML do aluno.</div>
+</div></main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='dzpp_v3_full';
+let state=load();
+function blank(){return {completed:[],values:{}}}
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){return blank()}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(state))}
+function get(id){return state.values[id]??''}
+function setv(id,v){state.values[id]=v;persist()}
+function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
+function item(label,val){if(!String(val||'').trim())return'';return `<div class="item"><b>${esc(label)}</b><br>${esc(val)}</div>`}
+function bind(){
+ document.querySelectorAll('[data-save]').forEach(el=>{
+   if(el.type==='checkbox')el.checked=!!get(el.id);else el.value=get(el.id);
+   el.addEventListener('input',()=>{setv(el.id,el.type==='checkbox'?el.checked:el.value);refresh()});
+   el.addEventListener('change',()=>{setv(el.id,el.type==='checkbox'?el.checked:el.value);refresh()});
+ });
+ document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.go)));
+}
+function show(id){
+ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('[data-go]').forEach(b=>b.classList.toggle('active',b.dataset.go===id));
+ window.scrollTo({top:0,behavior:'smooth'});refresh()
+}
+function nextStage(){
+ for(let i=1;i<=5;i++)if(!state.completed.includes(i))return i;
+ return 6
+}
+function goNext(){const n=nextStage();show(n<=5?'stage'+n:'finish')}
+function refresh(){
+ const done=state.completed.length;
+ document.getElementById('progressBar').style.width=(done/5*100)+'%';
+ document.getElementById('progressText').textContent=Math.round(done/5*100)+'%';
+ document.getElementById('kpiStages').textContent=done+'/5';
+ const vals=Object.values(state.values).filter(v=>v===true||String(v||'').trim());
+ document.getElementById('kpiAnswers').textContent=vals.length;
+ const ideas=[get('s1_idea1'),get('s1_idea2'),get('s1_idea3')].filter(x=>String(x).trim());
+ document.getElementById('kpiIdeas').textContent=ideas.length;
+
+ document.querySelectorAll('[data-go]').forEach(b=>{
+   const m=b.dataset.go.match(/stage(\d)/);
+   if(m)b.classList.toggle('done',state.completed.includes(+m[1]));
+ });
+
+ const s1fields=[['Experiências',get('s1_experiencias')],['Habilidades',get('s1_habilidades')],['Problemas',get('s1_problemas')],['Assuntos',get('s1_assuntos')],['Pedidos de ajuda',get('s1_ajuda')],['Públicos',get('s1_publicos')]];
+ const s1count=s1fields.filter(x=>String(x[1]).trim()).length;
+ document.getElementById('s1_loaded').innerHTML=s1count?`<span style="color:var(--g);font-weight:900">✓ ${s1count} respostas conectadas automaticamente</span>`:'Preencha seu mapa para conectar os dados.';
+ document.getElementById('s1_summary').innerHTML=s1fields.map(x=>item(x[0],x[1])).join('')||'<div class="muted small">Nenhum dado salvo.</div>';
+
+ document.getElementById('s2_ideasLoaded').innerHTML=ideas.map((x,i)=>item('Ideia '+(i+1),x)).join('')||'<div class="muted">Conclua a Etapa 1 primeiro.</div>';
+ document.querySelectorAll('[data-idea-select]').forEach(select=>{
+   const current=get(select.id);
+   select.innerHTML='<option value="">Selecione uma das suas ideias...</option>'+ideas.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+   select.value=current;
+ });
+ const sel=document.getElementById('s2_escolhida'),cur=get('s2_escolhida');
+ sel.innerHTML='<option value="">Selecione...</option>'+ideas.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+ sel.value=cur;
+ document.getElementById('s3_chosen').textContent=get('s2_escolhida')||'Nenhuma ideia escolhida ainda.';
+
+ document.getElementById('s4_productSummary').innerHTML=
+   item('Ideia',get('s2_escolhida'))+item('Nome da V1',get('s3_nome'))+item('Público',get('s3_publico'))+
+   item('Resultado',get('s3_pontoB'))+item('Formato',get('s3_formato'))+item('Resumo',get('s3_resumo')) ||
+   '<div class="muted">Conclua a Etapa 3 primeiro.</div>';
+
+ document.getElementById('s5_offerSummary').innerHTML=
+   item('Produto',get('s3_nome'))+item('Para quem',get('s4_paraquem'))+item('Benefício',get('s4_beneficio'))+
+   item('Preço',get('s4_preco'))+item('Oferta',get('s4_ofertaFinal'))+item('CTA',get('s4_cta')) ||
+   '<div class="muted">Conclua a Etapa 4 primeiro.</div>';
+
+ document.getElementById('finalProduct').innerHTML=
+   item('Nome',get('s3_nome'))+item('Ideia',get('s2_escolhida'))+item('Público',get('s3_publico'))+
+   item('Transformação',get('s3_pontoB'))+item('Formato',get('s3_formato')) || '<div class="muted">Ainda incompleto.</div>';
+ document.getElementById('finalOffer').innerHTML=
+   item('Oferta',get('s4_ofertaFinal'))+item('Preço',get('s4_preco'))+item('CTA',get('s4_cta'))+
+   item('Onde publicar',get('s5_plataforma'))+item('Canais',get('s5_canais')) || '<div class="muted">Ainda incompleto.</div>';
+
+ renderCentral();
+}
+function renderCentral(){
+ const n=nextStage();
+ const names={1:'Mapear seus ativos e gerar possibilidades.',2:'Comparar as ideias e validar sinais.',3:'Construir a menor versão útil.',4:'Transformar a V1 em uma oferta.',5:'Publicar e coletar aprendizados.',6:'Revisar seu projeto completo.'};
+ document.getElementById('nextStep').textContent=names[n];
+ document.getElementById('nextBtn').textContent=n<=5?'Ir para Etapa '+n+' →':'Ver conclusão →';
+ document.getElementById('decisionSummary').innerHTML=
+   item('Ideia escolhida',get('s2_escolhida'))+item('Produto',get('s3_nome'))+item('Preço',get('s4_preco')) || '<div class="muted">As decisões principais aparecerão aqui.</div>';
+
+ const rows=[
+  {n:1,t:'Descobrir',d:get('s1_idea1')?'Ideias registradas: '+[get('s1_idea1'),get('s1_idea2'),get('s1_idea3')].filter(Boolean).length:'Mapa de ativos pendente.'},
+  {n:2,t:'Validar',d:get('s2_escolhida')?'Ideia escolhida: '+get('s2_escolhida'):'Validação pendente.'},
+  {n:3,t:'Criar',d:get('s3_nome')?'V1: '+get('s3_nome'):'V1 pendente.'},
+  {n:4,t:'Ofertar',d:get('s4_ofertaFinal')?'Oferta registrada.':'Oferta pendente.'},
+  {n:5,t:'Publicar',d:get('s5_plataforma')?'Publicação: '+get('s5_plataforma'):'Publicação pendente.'}
+ ];
+ document.getElementById('centralCards').innerHTML=rows.map(s=>`<div class="card stage-card ${state.completed.includes(s.n)?'complete':(nextStage()===s.n?'current':'')}">
+   <div class="small ${state.completed.includes(s.n)?'ok':'muted'}">${state.completed.includes(s.n)?'CONCLUÍDA ✓':(nextStage()===s.n?'PRÓXIMA ETAPA':'PENDENTE')}</div>
+   <h3>${s.n}. ${s.t}</h3><p class="muted">${esc(s.d)}</p>
+   <button class="btn secondary" onclick="show('stage${s.n}')">${state.completed.includes(s.n)?'Revisar etapa':'Abrir etapa'}</button>
+ </div>`).join('');
+}
+function prepareStage1(){
+ const ids=['s1_experiencias','s1_habilidades','s1_problemas','s1_assuntos','s1_ajuda','s1_publicos'];
+ const count=ids.filter(id=>String(get(id)).trim()).length;
+ if(count<3){toast('Preencha pelo menos 3 campos do mapa.');return}
+ generatePrompt(1);toast(count+' respostas conectadas à análise.')
+}
+function completeStage(n){
+ const req={1:['s1_idea1','s1_idea2','s1_idea3'],2:['s2_fit','s2_problem','s2_small','s2_escolhida','s2_justificativa'],3:['s3_nome','s3_resumo'],4:['s4_ofertaFinal'],5:['s5_plataforma','s5_canais','s5_mensagem','s5_plano','s5_resultados']}[n];
+ const missing=req.filter(id=>!String(get(id)).trim());
+ if(missing.length){
+   if(n===5){
+     const labels={
+       s5_plataforma:'onde o produto ficará disponível',
+       s5_canais:'os canais de divulgação',
+       s5_mensagem:'a mensagem principal',
+       s5_plano:'o plano inicial de 7 dias',
+       s5_resultados:'os resultados e aprendizados'
+     };
+     toast('Antes de concluir, preencha '+labels[missing[0]]+'.');
+   }else{
+     toast('Complete os campos essenciais antes de avançar.');
+   }
+   return
+ }
+ if(n===5){
+   const checks=['s5_ck1','s5_ck2','s5_ck3','s5_ck4'];
+   if(checks.some(id=>get(id)!==true)){toast('Confirme os 4 itens finais antes de concluir.');return}
+ }
+ if(!state.completed.includes(n))state.completed.push(n);
+ persist();refresh();toast('Etapa '+n+' concluída ✓');
+ setTimeout(()=>show(n<5?'stage'+(n+1):'finish'),250)
+}
+
+function simulateIdeas(){
+ const topic=(get('s1_assuntos')||get('s1_habilidades')||get('s1_experiencias')||'seu conhecimento').trim();
+ const audience=(get('s1_publicos')||'pessoas que enfrentam esse problema').trim();
+ const problem=(get('s1_problemas')||get('s1_ajuda')||'um problema prático').trim();
+
+ const shortTopic=topic.split(/[,\n;.]/)[0].trim() || 'seu conhecimento';
+ const shortAudience=audience.split(/[,\n;.]/)[0].trim() || 'um público que você conhece';
+ const shortProblem=problem.split(/[,\n;.]/)[0].trim() || 'um problema prático';
+
+ const ideas=[
+   `Guia prático: ${shortTopic} para ${shortAudience}`,
+   `Checklist passo a passo para resolver: ${shortProblem}`,
+   `Kit de modelos e orientações sobre ${shortTopic}`
+ ];
+ ['s1_idea1','s1_idea2','s1_idea3'].forEach((id,i)=>{
+   state.values[id]=ideas[i];
+   const el=document.getElementById(id);
+   if(el)el.value=ideas[i];
+ });
+ persist();refresh();
+ toast('3 ideias de demonstração preenchidas automaticamente ✓');
+}
+
+function basePrompt(n){
+ if(n===1)return `Você é um explorador de possibilidades de produtos digitais.
+Use SOMENTE os dados reais abaixo. Não invente experiência, demanda ou resultados.
+
+EXPERIÊNCIAS:
+${get('s1_experiencias')}
+
+HABILIDADES:
+${get('s1_habilidades')}
+
+PROBLEMAS QUE JÁ RESOLVI:
+${get('s1_problemas')}
+
+ASSUNTOS QUE SEI EXPLICAR:
+${get('s1_assuntos')}
+
+AS PESSOAS PEDEM MINHA AJUDA PARA:
+${get('s1_ajuda')}
+
+PÚBLICOS OU AMBIENTES QUE CONHEÇO:
+${get('s1_publicos')}
+
+Tarefa:
+1. Gere 5 possibilidades pequenas de produtos digitais.
+2. Para cada uma: problema, público possível, formato inicial e o que precisa ser validado.
+3. Não trate hipótese como demanda comprovada.
+4. No final, destaque as 3 ideias mais coerentes e explique por quê.`;
+
+ if(n===2)return `Você é um analista de validação.
+Não invente demanda. Separe evidência de hipótese.
+
+IDEIAS:
+1) ${get('s1_idea1')}
+2) ${get('s1_idea2')}
+3) ${get('s1_idea3')}
+
+IDEIA MAIS ALINHADA COM MINHA EXPERIÊNCIA:
+${get('s2_fit')}
+
+IDEIA COM PROBLEMA MAIS CLARO:
+${get('s2_problem')}
+
+IDEIA MAIS RÁPIDA DE TESTAR:
+${get('s2_small')}
+
+EVIDÊNCIAS INDIRETAS:
+${get('s2_evidencias')}
+
+CONVERSAS:
+${get('s2_conversas')}
+
+HIPÓTESES AINDA ABERTAS:
+${get('s2_hipoteses')}
+
+Tarefa:
+1. Compare clareza do problema, proximidade com minha experiência, facilidade de V1 e força das evidências.
+2. Mostre o que é evidência e o que ainda é hipótese.
+3. Recomende uma direção, mas não escolha por mim.
+4. Sugira o próximo teste simples.`;
+
+ if(n===3)return `Você é um arquiteto de V1.
+Mantenha o produto pequeno e útil.
+
+IDEIA VALIDADA:
+${get('s2_escolhida')}
+
+PÚBLICO:
+${get('s3_publico')}
+
+PONTO A:
+${get('s3_pontoA')}
+
+PONTO B:
+${get('s3_pontoB')}
+
+FORMATO:
+${get('s3_formato')}
+
+PARTES INDISPENSÁVEIS:
+${get('s3_partes')}
+
+PARA DEPOIS:
+${get('s3_depois')}
+
+Tarefa:
+1. Estruture uma V1 mínima.
+2. Organize as partes em ordem.
+3. Corte excessos.
+4. Diga o que não é necessário agora.
+5. Sugira um nome provisório claro, sem promessa exagerada.`;
+
+ if(n===4)return `Você é um editor de oferta.
+Melhore a clareza sem criar promessa de renda, vendas, prazo ou resultado garantido.
+
+PRODUTO:
+${get('s3_nome')}
+
+RESUMO:
+${get('s3_resumo')}
+
+PARA QUEM:
+${get('s4_paraquem')}
+
+PROBLEMA:
+${get('s4_problema')}
+
+O QUE RECEBE:
+${get('s4_recebe')}
+
+BENEFÍCIO:
+${get('s4_beneficio')}
+
+PREÇO:
+${get('s4_preco')}
+
+LIMITES DA PROMESSA:
+${get('s4_limites')}
+
+Tarefa:
+1. Crie uma oferta simples e direta.
+2. Separe características de benefícios.
+3. Explique para quem é e para quem não é.
+4. Remova exageros.
+5. Sugira frase principal e CTA.`;
+
+ return `Você é um planejador de divulgação orgânica inicial.
+Crie um plano executável de 7 dias sem prometer vendas.
+
+PRODUTO:
+${get('s3_nome')}
+
+OFERTA:
+${get('s4_ofertaFinal')}
+
+PREÇO:
+${get('s4_preco')}
+
+ONDE ESTÁ DISPONÍVEL:
+${get('s5_plataforma')}
+
+CANAIS:
+${get('s5_canais')}
+
+MENSAGEM PRINCIPAL:
+${get('s5_mensagem')}
+
+Tarefa:
+1. Monte um plano de 7 dias usando somente os canais informados.
+2. Alterne conteúdo, conversa, apresentação da oferta e coleta de feedback.
+3. Diga o que observar em cada dia.
+4. Não prometa vendas.
+5. Priorize aprendizado real.`;
+}
+let rescueAddon={};
+function generatePrompt(n){
+ const txt=basePrompt(n)+(rescueAddon[n]?'\n\nAJUSTE ADICIONAL:\n'+rescueAddon[n]:'');
+ document.getElementById('prompt'+n).textContent=txt;toast('Prompt preparado com seus dados.')
+}
+function copyPrompt(n){
+ let txt=document.getElementById('prompt'+n).textContent;
+ if(txt.includes('aparecerá aqui')||txt.startsWith('Preencha'))txt=basePrompt(n);
+ navigator.clipboard?.writeText(txt).then(()=>toast('Prompt copiado ✓')).catch(()=>toast('Selecione e copie manualmente.'))
+}
+function rescue(n,type){
+ const map={
+  especificas:'Gere opções mais específicas, com problema e público mais delimitados.',
+  dados:'Use somente fatos presentes nos meus dados. Não complete lacunas por suposição.',
+  outras:'Mostre possibilidades diferentes das anteriores, ainda coerentes com meus dados.',
+  simplificar:'Resuma a análise e use critérios fáceis de comparar.',
+  evidencias:'Separe claramente: evidência real, inferência e hipótese.',
+  riscos:'Mostre os principais riscos e incertezas antes de recomendar uma direção.',
+  menor:'Reduza a V1 ao menor escopo que ainda entregue valor.',
+  pratico:'Transforme a estrutura em passos e entregáveis práticos.',
+  excesso:'Corte tudo que não seja necessário para a primeira versão.',
+  menos_promessa:'Reescreva com promessa mais conservadora e verificável.',
+  mais_clara:'Reescreva de modo simples, específico e fácil de entender.',
+  beneficios:'Explique melhor os benefícios sem exagerar os resultados.',
+  mais_simples:'Reduza o plano para ações simples e executáveis.',
+  sem_anuncios:'Use somente divulgação orgânica; não inclua mídia paga.',
+  whatsapp:'Priorize WhatsApp, sem spam, usando conversas e status de forma natural.'
+ };
+ rescueAddon[n]=map[type]||'';generatePrompt(n)
+}
+
+const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' : window.location.origin);
+
+async function loadAIStatus(){
+  try{
+    const r=await fetch(API_BASE+'/api/status');
+    if(!r.ok)throw new Error('backend');
+    const d=await r.json();
+    const mode=d.provider==='mock'?'modo de teste':'IA conectada';
+    document.getElementById('aiUsageText').innerHTML=`<span style="color:var(--g);font-weight:900">${d.remaining_uses}</span> usos de teste restantes • ${mode}`;
+  }catch(e){
+    document.getElementById('aiUsageText').innerHTML='<span style="color:var(--warn)">Backend não iniciado.</span> O modo manual continua disponível.';
+  }
+}
+
+function actionLabel(stage, action){
+ const labels={
+  "1:main":"explorar possibilidades","1:especificas":"gerar opções mais específicas","1:dados":"usar somente os dados","1:outras":"mostrar outras possibilidades",
+  "2:main":"comparar ideias","2:simplificar":"simplificar análise","2:evidencias":"separar fatos de hipóteses","2:riscos":"mostrar riscos",
+  "3:main":"estruturar V1","3:menor":"reduzir escopo","3:pratico":"tornar mais prático","3:excesso":"cortar excessos",
+  "4:main":"editar oferta","4:menos_promessa":"reduzir promessa","4:mais_clara":"aumentar clareza","4:beneficios":"melhorar benefícios",
+  "5:main":"criar plano","5:mais_simples":"simplificar plano","5:sem_anuncios":"usar somente orgânico","5:whatsapp":"priorizar WhatsApp"
+ };
+ return labels[stage+':'+action]||'usar IA';
+}
+
+async function runAI(stage, action='main'){
+  const prompt=basePrompt(stage);
+  const box=document.getElementById('aiResponse'+stage);
+  box.style.display='block';
+  box.textContent='Analisando com segurança...';
+  try{
+    const r=await fetch(API_BASE+'/api/ai/run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Demo-User':'demo-user'},
+      body:JSON.stringify({stage,action,prompt,project_data:state.values})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.detail||'Falha ao usar IA.');
+    box.textContent=d.answer;
+    if(stage===1 && Array.isArray(d.ideas) && d.ideas.length>=3){
+      ['s1_idea1','s1_idea2','s1_idea3'].forEach((id,i)=>{
+        state.values[id]=d.ideas[i];
+        const el=document.getElementById(id); if(el)el.value=d.ideas[i];
+      });
+      persist(); refresh();
+      toast('3 ideias preenchidas automaticamente ✓');
+    }else{
+      toast('IA respondeu: '+actionLabel(stage,action)+' ✓');
+    }
+    await loadAIStatus();
+  }catch(e){
+    box.textContent='Não foi possível usar a IA integrada agora. Você ainda pode copiar o prompt e seguir pelo modo manual.\n\nMotivo: '+e.message;
+    toast('IA indisponível. Modo manual continua funcionando.');
+  }
+}
+
+function exportSummary(){
+ const text=`DO ZERO AO PRIMEIRO PRODUTO — RESUMO DO PROJETO
+
+IDEIA ESCOLHIDA
+${get('s2_escolhida')}
+
+PRODUTO / V1
+Nome: ${get('s3_nome')}
+Público: ${get('s3_publico')}
+Transformação: ${get('s3_pontoB')}
+Formato: ${get('s3_formato')}
+Resumo: ${get('s3_resumo')}
+
+OFERTA
+Para quem: ${get('s4_paraquem')}
+Benefício: ${get('s4_beneficio')}
+Preço: ${get('s4_preco')}
+Frase principal: ${get('s4_ofertaFinal')}
+CTA: ${get('s4_cta')}
+
+PUBLICAÇÃO
+Onde: ${get('s5_plataforma')}
+Canais: ${get('s5_canais')}
+Mensagem: ${get('s5_mensagem')}
+Plano de 7 dias: ${get('s5_plano')}
+Aprendizados: ${get('s5_resultados')}
+`;
+ const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Resumo_Primeiro_Produto.txt';a.click();URL.revokeObjectURL(a.href)
+}
+function resetAll(){
+ if(!confirm('Apagar todos os dados deste teste?'))return;
+ localStorage.removeItem(KEY);state=blank();rescueAddon={};
+ document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});
+ refresh();show('central');toast('Teste reiniciado.')
+}
+bind();refresh();loadAIStatus();
+</script>
+</body>
+</html>
