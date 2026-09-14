@@ -428,7 +428,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
   </div>
 </section>
 
-<div class="footer-note">Protótipo funcional local. Neste estágio, os dados ficam salvos no navegador do aparelho. Para a versão comercial, login, salvamento na nuvem, créditos da IA, segurança e API devem ficar em backend seguro — nunca dentro do HTML do aluno.</div>
+<div class="footer-note">Versão online de teste. Os dados deste protótipo ficam salvos no navegador do aparelho. Antes da versão comercial, login, salvamento na nuvem, controle individual de créditos e segurança adicional devem ficar em backend seguro — nunca dentro do HTML do aluno.</div>
 </div></main>
 </div>
 
@@ -816,7 +816,28 @@ async function runAI(stage, action='main'){
     const answer=d.text||d.answer||'';
     box.textContent=answer||'A IA respondeu, mas o texto veio vazio.';
     if(stage===1){
-      const ideas=(Array.isArray(d.ideas)?d.ideas:answer.split(/\n+/).map(x=>x.trim()).filter(Boolean).map(x=>x.replace(/^[-*•\s]*\d+[\).:-]?\s*/,''))).filter(Boolean).slice(0,3);
+      const ideasFromApi = Array.isArray(d.ideas) ? d.ideas : [];
+      const lines = answer.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+      const boldHeadings = lines.map(line=>{
+        const m=line.match(/^\*\*([^*]+)\*\*\s*$/);
+        return m ? m[1].trim() : '';
+      }).filter(x=>x && !x.includes(':'));
+      const numbered = lines.map(line=>{
+        const m=line.match(/^\s*(?:\d+[\).:-]|[-•])\s+(.+)$/);
+        return m ? m[1].replace(/^\*\*|\*\*$/g,'').trim() : '';
+      }).filter(x=>x && !/^(Público|Problema|Produto|MVP|Validação|Mini treinamento|Guia prático)\s*:/i.test(x));
+      const productTitleMatches=[];
+      const rx=/\*\*([^*\n:]{6,120})\*\*/g;
+      let mm;
+      while((mm=rx.exec(answer))!==null){
+        const t=mm[1].trim();
+        if(!/^(Público|Problema|Produto|MVP|Validação|Formato|Benefício|Públicos?)$/i.test(t) && !t.includes(':')) productTitleMatches.push(t);
+      }
+      const combined=[...ideasFromApi,...boldHeadings,...numbered,...productTitleMatches]
+        .map(x=>String(x).replace(/^[-*•\s]+/,'').trim())
+        .filter(Boolean)
+        .filter((x,i,a)=>a.indexOf(x)===i);
+      const ideas=combined.slice(0,3);
       if(ideas.length>=3){
         ['s1_idea1','s1_idea2','s1_idea3'].forEach((id,i)=>{
           state.values[id]=ideas[i];
