@@ -775,7 +775,7 @@ function rescue(n,type){
  rescueAddon[n]=map[type]||'';generatePrompt(n)
 }
 
-const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' : window.location.origin);
+const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' : 'https://primeiro-produto-backend.onrender.com');
 
 async function loadAIStatus(){
   try{
