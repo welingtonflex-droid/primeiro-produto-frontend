@@ -78,6 +78,14 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 .finish{border:1px solid var(--g);background:radial-gradient(circle at 70% 0,rgba(124,255,0,.12),transparent 38%),#0b110d}
 .finish h2{font-size:clamp(34px,6vw,58px)}
 .footer-note{font-size:12px;color:var(--mut);line-height:1.5;margin-top:24px}
+.visual-builder{border:1px solid #4d7a31;background:radial-gradient(circle at 90% 0,rgba(124,255,0,.10),transparent 34%),#0b110d;border-radius:18px;padding:20px;margin-top:16px;box-shadow:var(--shadow)}
+.visual-builder .tag{display:inline-block;font-size:11px;font-weight:950;letter-spacing:.08em;color:var(--g);margin-bottom:8px}
+.visual-builder .pdf-status{margin-top:12px;padding:12px;border-radius:12px;background:#08100a;border:1px solid var(--line);color:var(--mut);line-height:1.5}
+.visual-builder .pdf-status.ok{border-color:#426b2c;color:#eaf6e7}
+.visual-builder .pdf-status.err{border-color:#6a3030;color:#ffd0d0}
+.visual-builder .review-check{display:flex;gap:10px;align-items:flex-start;margin:14px 0;color:#d7dfd8}
+.visual-builder .review-check input{width:auto;margin-top:3px}
+
 .toast{position:fixed;right:18px;bottom:18px;z-index:50;background:#111a13;color:#fff;border:1px solid #345326;border-radius:12px;padding:12px 14px;display:none}
 @media(max-width:900px){
  .shell{grid-template-columns:1fr}
@@ -311,6 +319,18 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
       <button class="btn" onclick="completeStage(3)">Concluir Etapa 3 →</button>
     </div>
   </div>
+
+  <div class="visual-builder">
+    <div class="tag">NOVO • PRODUTO FINAL</div>
+    <h3>✨ Gerador do Produto Visual</h3>
+    <p class="muted">Quando a estrutura estiver pronta, transforme sua V1 em um PDF visual profissional. O arquivo é gerado pelo backend seguro; nenhuma chave de IA fica neste navegador.</p>
+    <div class="notice small"><b>Antes de gerar:</b> revise o nome, público, transformação, formato, partes indispensáveis e resumo da V1. A IA organiza e desenvolve o material, mas você continua responsável por validar o conteúdo.</div>
+    <label class="review-check"><input type="checkbox" id="s3_pdf_review" data-save> Revisei as informações da minha V1 e quero gerar a primeira versão visual do produto.</label>
+    <div class="row">
+      <button class="btn" id="visualPdfBtn" onclick="generateVisualPDF()">✨ Criar meu produto visual</button>
+    </div>
+    <div id="visualPdfStatus" class="pdf-status">O PDF ainda não foi gerado nesta sessão.</div>
+  </div>
 </section>
 
 <section id="stage4" class="section">
@@ -525,7 +545,7 @@ function renderCentral(){
  const rows=[
   {n:1,t:'Descobrir',d:get('s1_idea1')?'Ideias registradas: '+[get('s1_idea1'),get('s1_idea2'),get('s1_idea3')].filter(Boolean).length:'Mapa de ativos pendente.'},
   {n:2,t:'Validar',d:get('s2_escolhida')?'Ideia escolhida: '+get('s2_escolhida'):'Validação pendente.'},
-  {n:3,t:'Criar',d:get('s3_nome')?'V1: '+get('s3_nome'):'V1 pendente.'},
+  {n:3,t:'Criar',d:get('s3_pdf_gerado')?'Produto visual gerado: '+get('s3_nome'):(get('s3_nome')?'V1: '+get('s3_nome'):'V1 pendente.')},
   {n:4,t:'Ofertar',d:get('s4_ofertaFinal')?'Oferta registrada.':'Oferta pendente.'},
   {n:5,t:'Publicar',d:get('s5_plataforma')?'Publicação: '+get('s5_plataforma'):'Publicação pendente.'}
  ];
@@ -855,6 +875,96 @@ async function runAI(stage, action='main'){
   }catch(e){
     box.textContent='Não foi possível usar a IA integrada agora. Você ainda pode copiar o prompt e seguir pelo modo manual.\n\nMotivo: '+e.message;
     toast('IA indisponível. Modo manual continua funcionando.');
+  }
+}
+
+
+async function generateVisualPDF(){
+  const required=[
+    ['s2_escolhida','a ideia escolhida'],['s3_publico','o público'],['s3_pontoA','o ponto A'],
+    ['s3_pontoB','a transformação'],['s3_formato','o formato'],['s3_partes','as partes indispensáveis'],
+    ['s3_nome','o nome da V1'],['s3_resumo','o resumo da V1']
+  ];
+  const missing=required.find(([id])=>!String(get(id)||'').trim());
+  if(missing){toast('Antes de gerar, preencha '+missing[1]+'.');return}
+  if(get('s3_pdf_review')!==true){toast('Confirme que você revisou as informações da V1.');return}
+
+  const btn=document.getElementById('visualPdfBtn');
+  const status=document.getElementById('visualPdfStatus');
+  btn.disabled=true; btn.textContent='Gerando produto visual...';
+  status.className='pdf-status';
+  status.textContent='Preparando conteúdo e montando o PDF. No plano gratuito do servidor, isso pode levar alguns segundos.';
+
+  const content=[
+    'Crie um produto digital completo e útil a partir das informações abaixo.',
+    'Ideia validada: '+get('s2_escolhida'),
+    'Público: '+get('s3_publico'),
+    'Situação atual (Ponto A): '+get('s3_pontoA'),
+    'Resultado desejado (Ponto B): '+get('s3_pontoB'),
+    'Formato escolhido: '+get('s3_formato'),
+    'Partes indispensáveis: '+get('s3_partes'),
+    'Resumo aprovado: '+get('s3_resumo'),
+    get('s3_depois') ? 'Deixar para versões futuras: '+get('s3_depois') : '',
+    'Desenvolva explicações práticas, exemplos, ações e checklists quando fizer sentido. Não invente fatos, provas, garantias ou resultados.'
+  ].filter(Boolean).join('\n');
+
+  const payload={
+    schema_version:'1.0',
+    app_version:'V14',
+    action:'generate_visual_pdf',
+    project:{
+      title:get('s3_nome'),
+      subtitle:get('s3_pontoB'),
+      audience:get('s3_publico'),
+      transformation:get('s3_pontoB'),
+      format:get('s3_formato'),
+      content:content,
+      visual_style:'Profissional',
+      visual_plan:'Visual editorial moderno, leitura fácil no celular, capa impactante, blocos visuais, cards, checklists e hierarquia clara.',
+      planned_images:'Ilustrações coerentes com o tema do produto, usadas apenas quando ajudarem a compreensão.'
+    },
+    output:{
+      language:'pt-BR',
+      page_size:'A4',
+      target_pages:9,
+      image_led:true,
+      editable_before_final:true,
+      require_review:true
+    },
+    safety:{
+      no_api_key_in_client:true,
+      no_guaranteed_results:true,
+      validate_technical_claims:true,
+      student_review_confirmed:true
+    }
+  };
+
+  try{
+    const r=await fetch(API_BASE+'/api/generate-visual-pdf',{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+    });
+    if(!r.ok){
+      let msg='Falha ao gerar o PDF.';
+      try{const d=await r.json();msg=d.detail||msg}catch(_e){}
+      throw new Error(typeof msg==='string'?msg:JSON.stringify(msg));
+    }
+    const blob=await r.blob();
+    if(!blob.size)throw new Error('O servidor retornou um arquivo vazio.');
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const safe=(get('s3_nome')||'Meu_Primeiro_Produto').replace(/[^a-zA-Z0-9À-ÿ_-]+/g,'_').replace(/^_+|_+$/g,'');
+    a.href=url;a.download=(safe||'Meu_Primeiro_Produto')+'.pdf';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    state.values.s3_pdf_gerado=true;persist();refresh();
+    status.className='pdf-status ok';
+    status.innerHTML='<b style="color:var(--g)">✓ Produto visual gerado.</b><br>O PDF foi enviado para o download do seu aparelho. Revise o arquivo antes de publicar ou vender.';
+    toast('Produto visual gerado ✓');
+  }catch(e){
+    status.className='pdf-status err';
+    status.textContent='Não foi possível gerar o PDF agora. Motivo: '+e.message;
+    toast('Falha ao gerar o produto visual.');
+  }finally{
+    btn.disabled=false;btn.textContent='✨ Criar meu produto visual';
   }
 }
 
