@@ -837,7 +837,8 @@ const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' :
 
 async function loadAIStatus(){
   try{
-    const aiUserId=activeUser?.id||'demo';\n    const r=await fetch(API_BASE+'/api/status?user_id='+encodeURIComponent(aiUserId));
+    const aiUserId=activeUser?.id||'demo';
+    const r=await fetch(API_BASE+'/api/status?user_id='+encodeURIComponent(aiUserId));
     if(!r.ok)throw new Error('backend');
     const d=await r.json();
     const mode=d.provider==='mock'?'modo de teste':'IA conectada';
