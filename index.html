@@ -87,6 +87,11 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 .visual-builder .review-check input{width:auto;margin-top:3px}
 
 .toast{position:fixed;right:18px;bottom:18px;z-index:50;background:#111a13;color:#fff;border:1px solid #345326;border-radius:12px;padding:12px 14px;display:none}
+.auth-card{margin-top:16px;border:1px solid #385929;background:linear-gradient(145deg,#0d1710,#09100a);border-radius:16px;padding:14px}
+.auth-title{font-weight:950;color:var(--g);margin-bottom:8px}.auth-fields{display:grid;gap:8px}.auth-card input{padding:10px;font-size:14px}
+.auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.auth-actions .btn{padding:9px 11px;font-size:12px}
+.auth-user{font-size:12px;color:#dce5dd;line-height:1.45;word-break:break-word}.auth-msg{font-size:11px;color:var(--mut);line-height:1.4;margin-top:8px}
+
 @media(max-width:900px){
  .shell{grid-template-columns:1fr}
  .sidebar{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--line)}
@@ -117,6 +122,19 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
   </div>
   <div class="side-note"><b style="color:var(--g)">IA SUGERE. VOCÊ VALIDA.</b><br>Esta versão já está preparada para usar um backend seguro. A chave da IA nunca fica no HTML do aluno.</div>
     <div class="side-note" id="aiUsageCard"><b>Usos de IA — ambiente de teste</b><br><span id="aiUsageText">Verificando backend...</span><br><span class="small">O número comercial de usos ainda não foi definido.</span></div>
+    <div class="auth-card">
+      <div class="auth-title">🔐 Acesso do aluno</div>
+      <div id="authLoggedOut">
+        <div class="auth-fields"><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail"><input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Sua senha"></div>
+        <div class="auth-actions"><button class="btn" type="button" onclick="signInStudent()">Entrar</button><button class="btn secondary" type="button" onclick="signUpStudent()">Criar conta</button></div>
+        <div class="auth-msg" id="authMessage">Entre para salvar seu progresso na nuvem.</div>
+      </div>
+      <div id="authLoggedIn" style="display:none">
+        <div class="auth-user">Conectado como<br><b id="authUserEmail"></b></div>
+        <div class="auth-actions"><button class="btn secondary" type="button" onclick="signOutStudent()">Sair</button></div>
+        <div class="auth-msg" id="cloudStatus">Sincronização ativa.</div>
+      </div>
+    </div>
 </aside>
 
 <main class="main"><div class="wrap">
@@ -448,7 +466,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
   </div>
 </section>
 
-<div class="footer-note">Versão online de teste. Os dados deste protótipo ficam salvos no navegador do aparelho. Antes da versão comercial, login, salvamento na nuvem, controle individual de créditos e segurança adicional devem ficar em backend seguro — nunca dentro do HTML do aluno.</div>
+<div class="footer-note">Versão online de teste. Com login ativo, o progresso do aluno é sincronizado com o Supabase e uma cópia local permanece neste aparelho. O controle comercial individual de créditos de IA ainda será conectado ao backend seguro.</div>
 </div></main>
 </div>
 
@@ -470,38 +488,18 @@ function persist(){localStorage.setItem(KEY,JSON.stringify(state))}
 function get(id){return state.values[id]??''}
 function setv(id,v){state.values[id]=v;persist();scheduleCloudSave()}
 let cloudSaveTimer=null;
-function scheduleCloudSave(){
- if(!supabaseClient)return;
- clearTimeout(cloudSaveTimer);
- cloudSaveTimer=setTimeout(saveProgressToCloud,900);
-}
-async function currentSupabaseUser(){
- if(!supabaseClient)return null;
- try{const {data:{user}}=await supabaseClient.auth.getUser();return user||null}catch(e){return null}
-}
-async function saveProgressToCloud(){
- const user=await currentSupabaseUser(); if(!user)return;
- try{
-   const {error}=await supabaseClient.from('student_progress').upsert(
-     {user_id:user.id,progress:state,updated_at:new Date().toISOString()},
-     {onConflict:'user_id'}
-   );
-   if(error)console.warn('Supabase save:',error.message);
- }catch(e){console.warn('Supabase save:',e)}
-}
-async function loadProgressFromCloud(){
- const user=await currentSupabaseUser(); if(!user)return false;
- try{
-   const {data,error}=await supabaseClient.from('student_progress').select('progress').eq('user_id',user.id).maybeSingle();
-   if(error)throw error;
-   if(data?.progress){
-     state=data.progress;persist();
-     document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=!!get(el.id);else el.value=get(el.id)});
-     refresh();return true;
-   }
- }catch(e){console.warn('Supabase load:',e)}
- return false;
-}
+let activeUser=null;
+function setAuthMessage(msg,err=false){const el=document.getElementById('authMessage');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
+function setCloudStatus(msg,err=false){const el=document.getElementById('cloudStatus');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
+function renderAuth(user){activeUser=user||null;const a=document.getElementById('authLoggedOut'),b=document.getElementById('authLoggedIn');if(!a||!b)return;a.style.display=user?'none':'block';b.style.display=user?'block':'none';if(user){document.getElementById('authUserEmail').textContent=user.email||'Aluno autenticado';setCloudStatus('Conta conectada • progresso na nuvem')}else setAuthMessage('Entre para salvar seu progresso na nuvem.')}
+function scheduleCloudSave(){if(!supabaseClient||!activeUser)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(saveProgressToCloud,900)}
+async function currentSupabaseUser(){if(!supabaseClient)return null;try{const {data:{user}}=await supabaseClient.auth.getUser();activeUser=user||null;return activeUser}catch(e){return null}}
+async function saveProgressToCloud(){const user=activeUser||await currentSupabaseUser();if(!user)return;try{setCloudStatus('Salvando...');const {error}=await supabaseClient.from('student_progress').upsert({user_id:user.id,progress:state},{onConflict:'user_id'});if(error)throw error;setCloudStatus('✓ Progresso salvo na nuvem')}catch(e){console.warn(e);setCloudStatus('Falha ao salvar na nuvem: '+(e.message||'erro'),true)}}
+async function loadProgressFromCloud(){const user=activeUser||await currentSupabaseUser();if(!user)return false;try{setCloudStatus('Carregando seu progresso...');const {data,error}=await supabaseClient.from('student_progress').select('progress').eq('user_id',user.id).maybeSingle();if(error)throw error;if(data?.progress&&typeof data.progress==='object'){state=data.progress;persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=!!get(el.id);else el.value=get(el.id)});refresh();setCloudStatus('✓ Progresso carregado da nuvem');return true}await saveProgressToCloud();setCloudStatus('✓ Primeiro progresso criado na nuvem');return true}catch(e){console.warn(e);setCloudStatus('Falha ao carregar da nuvem: '+(e.message||'erro'),true);return false}}
+async function signInStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Entrando...');const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){setAuthMessage('Não foi possível entrar: '+error.message,true);return}renderAuth(data.user);await loadProgressFromCloud();loadAIStatus();toast('Login realizado ✓')}
+async function signUpStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Criando conta...');const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+window.location.pathname}});if(error){setAuthMessage('Não foi possível criar a conta: '+error.message,true);return}if(data.session){renderAuth(data.user);await loadProgressFromCloud();toast('Conta criada e conectada ✓')}else setAuthMessage('Conta criada. Confirme o e-mail e depois toque em Entrar.')}
+async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
+async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user)await loadProgressFromCloud();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(user&&event==='SIGNED_IN')setTimeout(()=>loadProgressFromCloud(),0)})}
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
 function item(label,val){if(!String(val||'').trim())return'';return `<div class="item"><b>${esc(label)}</b><br>${esc(val)}</div>`}
@@ -624,7 +622,7 @@ function completeStage(n){
    if(checks.some(id=>get(id)!==true)){toast('Confirme os 4 itens finais antes de concluir.');return}
  }
  if(!state.completed.includes(n))state.completed.push(n);
- persist();refresh();toast('Etapa '+n+' concluída ✓');
+ persist();scheduleCloudSave();refresh();toast('Etapa '+n+' concluída ✓');
  setTimeout(()=>show(n<5?'stage'+(n+1):'finish'),250)
 }
 
@@ -839,7 +837,7 @@ const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' :
 
 async function loadAIStatus(){
   try{
-    const r=await fetch(API_BASE+'/api/status?user_id=demo');
+    const aiUserId=activeUser?.id||'demo';\n    const r=await fetch(API_BASE+'/api/status?user_id='+encodeURIComponent(aiUserId));
     if(!r.ok)throw new Error('backend');
     const d=await r.json();
     const mode=d.provider==='mock'?'modo de teste':'IA conectada';
@@ -869,7 +867,7 @@ async function runAI(stage, action='main'){
     const r=await fetch(API_BASE+'/api/ai/run',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({user_id:'demo',stage,action,data:state.values})
+      body:JSON.stringify({user_id:(activeUser?.id||'demo'),stage,action,data:state.values})
     });
     const d=await r.json();
     if(!r.ok)throw new Error(d.detail||'Falha ao usar IA.');
@@ -995,7 +993,7 @@ async function generateVisualPDF(){
     const safe=(get('s3_nome')||'Meu_Primeiro_Produto').replace(/[^a-zA-Z0-9À-ÿ_-]+/g,'_').replace(/^_+|_+$/g,'');
     a.href=url;a.download=(safe||'Meu_Primeiro_Produto')+'.pdf';document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
-    state.values.s3_pdf_gerado=true;persist();refresh();
+    state.values.s3_pdf_gerado=true;persist();scheduleCloudSave();refresh();
     status.className='pdf-status ok';
     status.innerHTML='<b style="color:var(--g)">✓ Produto visual gerado.</b><br>O PDF foi enviado para o download do seu aparelho. Revise o arquivo antes de publicar ou vender.';
     toast('Produto visual gerado ✓');
@@ -1044,11 +1042,7 @@ function resetAll(){
  document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});
  refresh();show('central');toast('Teste reiniciado.')
 }
-bind();refresh();loadAIStatus();
-if(supabaseClient){
- loadProgressFromCloud();
- supabaseClient.auth.onAuthStateChange((_event,session)=>{if(session?.user)loadProgressFromCloud()});
-}
+bind();refresh();loadAIStatus();initAuth();
 </script>
 </body>
 </html>
