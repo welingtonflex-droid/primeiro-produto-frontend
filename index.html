@@ -454,14 +454,54 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* SUPABASE: use apenas URL + chave PUBLICÁVEL. Nunca use sb_secret_ aqui. */
+const SUPABASE_URL='https://fcpmqfeeaozowwkmgajq.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY='sb_publishable_lGqMOKFxYpZMen_TvMKx9A_jJ3uazKl';
+const supabaseReady=SUPABASE_URL.startsWith('https://')&&!SUPABASE_URL.includes('COLE_AQUI')&&SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
+const supabaseClient=supabaseReady?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
+
 const KEY='dzpp_v3_full';
 let state=load();
 function blank(){return {completed:[],values:{}}}
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){return blank()}}
 function persist(){localStorage.setItem(KEY,JSON.stringify(state))}
 function get(id){return state.values[id]??''}
-function setv(id,v){state.values[id]=v;persist()}
+function setv(id,v){state.values[id]=v;persist();scheduleCloudSave()}
+let cloudSaveTimer=null;
+function scheduleCloudSave(){
+ if(!supabaseClient)return;
+ clearTimeout(cloudSaveTimer);
+ cloudSaveTimer=setTimeout(saveProgressToCloud,900);
+}
+async function currentSupabaseUser(){
+ if(!supabaseClient)return null;
+ try{const {data:{user}}=await supabaseClient.auth.getUser();return user||null}catch(e){return null}
+}
+async function saveProgressToCloud(){
+ const user=await currentSupabaseUser(); if(!user)return;
+ try{
+   const {error}=await supabaseClient.from('student_progress').upsert(
+     {user_id:user.id,progress:state,updated_at:new Date().toISOString()},
+     {onConflict:'user_id'}
+   );
+   if(error)console.warn('Supabase save:',error.message);
+ }catch(e){console.warn('Supabase save:',e)}
+}
+async function loadProgressFromCloud(){
+ const user=await currentSupabaseUser(); if(!user)return false;
+ try{
+   const {data,error}=await supabaseClient.from('student_progress').select('progress').eq('user_id',user.id).maybeSingle();
+   if(error)throw error;
+   if(data?.progress){
+     state=data.progress;persist();
+     document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=!!get(el.id);else el.value=get(el.id)});
+     refresh();return true;
+   }
+ }catch(e){console.warn('Supabase load:',e)}
+ return false;
+}
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
 function item(label,val){if(!String(val||'').trim())return'';return `<div class="item"><b>${esc(label)}</b><br>${esc(val)}</div>`}
@@ -1005,6 +1045,10 @@ function resetAll(){
  refresh();show('central');toast('Teste reiniciado.')
 }
 bind();refresh();loadAIStatus();
+if(supabaseClient){
+ loadProgressFromCloud();
+ supabaseClient.auth.onAuthStateChange((_event,session)=>{if(session?.user)loadProgressFromCloud()});
+}
 </script>
 </body>
 </html>
