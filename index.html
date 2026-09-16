@@ -205,10 +205,10 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     </div>
 
     <div class="ai">
-      <div class="status">BACKEND SEGURO • IA INTEGRADA</div>
+      <div class="status">IA ASSISTIDA • EXPLORAÇÃO</div>
       <h3>✨ Explorador de Possibilidades</h3>
       <p class="muted" id="s1_loaded">Preencha seu mapa para conectar os dados.</p>
-      <div class="notice small" style="margin-top:10px">A IA é acionada pelo backend seguro. A chave da API permanece protegida no servidor e nunca fica exposta no HTML do aluno.</div>
+      <div class="notice small" style="margin-top:10px">Use a IA para explorar possibilidades a partir do seu próprio mapa. Revise as sugestões antes de escolher o caminho final.</div>
       <div class="summary" id="s1_summary"></div>
       <div class="hr"></div>
       <div class="row">
@@ -274,7 +274,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     </div>
 
     <div class="ai">
-      <div class="status">BACKEND SEGURO • DADOS CONECTADOS</div>
+      <div class="status">IA ASSISTIDA • VALIDAÇÃO</div>
       <h3>✨ Comparador de Ideias</h3>
       <div class="row"><button class="btn" onclick="runAI(2,'main')">✨ Comparar com IA</button><button class="btn ghost" onclick="copyPrompt(2)">Copiar prompt</button></div>
       <div id="prompt2" class="prompt section-gap">Preencha as evidências para preparar a comparação.</div><div id="aiResponse2" class="ai-response" style="display:none"></div>
@@ -322,7 +322,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     </div>
 
     <div class="ai">
-      <div class="status">BACKEND SEGURO • IDEIA VALIDADA CONECTADA</div>
+      <div class="status">PRODUTO VISUAL • CRIAÇÃO</div>
       <h3>✨ Arquiteto da V1</h3>
       <div class="row"><button class="btn" onclick="runAI(3,'main')">✨ Estruturar com IA</button><button class="btn ghost" onclick="copyPrompt(3)">Copiar prompt</button></div>
       <div id="prompt3" class="prompt section-gap">Preencha os campos para preparar a estrutura.</div><div id="aiResponse3" class="ai-response" style="display:none"></div>
@@ -348,15 +348,6 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
       <button class="btn" id="visualPdfBtn" onclick="generateVisualPDF()">✨ Criar meu produto visual</button>
     </div>
     <div id="visualPdfStatus" class="pdf-status">O PDF ainda não foi gerado nesta sessão.</div>
-    <div class="notice small" style="margin-top:14px">
-      <b>Diagnóstico técnico temporário</b><br>Use estes controles somente durante os testes. Eles usam sua sessão de login automaticamente; nenhuma chave ou token precisa ser copiado.
-      <div class="row" style="margin-top:12px">
-        <button class="btn ghost" id="keyDiagnosticBtn" onclick="runKeyDiagnostic()">Diagnosticar chave do backend</button>
-        <button class="btn ghost" id="imageCapabilityBtn" onclick="checkImageCapability()">Verificar acesso à imagem</button>
-        <button class="btn ghost" id="imageSmokeBtn" onclick="runImageSmokeTest()" disabled>Testar 1 imagem</button>
-      </div>
-      <div id="imageDiagnosticStatus" class="pdf-status" style="margin-top:10px">Aguardando verificação.</div>
-    </div>
   </div>
 </section>
 
@@ -387,7 +378,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     </div>
 
     <div class="ai">
-      <div class="status">BACKEND SEGURO • PRODUTO CONECTADO</div>
+      <div class="status">OFERTA • CONSTRUÇÃO</div>
       <h3>✨ Editor da Oferta</h3>
       <div class="row"><button class="btn" onclick="runAI(4,'main')">✨ Melhorar com IA</button><button class="btn ghost" onclick="copyPrompt(4)">Copiar prompt</button></div>
       <div id="prompt4" class="prompt section-gap">Preencha a ficha para preparar a oferta.</div><div id="aiResponse4" class="ai-response" style="display:none"></div>
@@ -430,7 +421,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     </div>
 
     <div class="ai">
-      <div class="status">BACKEND SEGURO • OFERTA CONECTADA</div>
+      <div class="status">PUBLICAÇÃO • EXECUÇÃO</div>
       <h3>✨ Plano Orgânico de 7 Dias</h3>
       <div class="row"><button class="btn" onclick="runAI(5,'main')">✨ Criar plano com IA</button><button class="btn ghost" onclick="copyPrompt(5)">Copiar prompt</button></div>
       <div id="prompt5" class="prompt section-gap">Preencha os canais para preparar o plano.</div><div id="aiResponse5" class="ai-response" style="display:none"></div>
@@ -470,12 +461,12 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
     <div class="row section-gap">
       <button class="btn" onclick="show('central')">Voltar à Central</button>
       <button class="btn secondary" onclick="exportSummary()">Baixar resumo do projeto</button>
-      <button class="btn secondary" onclick="resetAll()">Reiniciar teste</button>
+      <button class="btn secondary" onclick="resetAll()">Recomeçar programa</button>
     </div>
   </div>
 </section>
 
-<div class="footer-note">Versão online de teste. O acesso é individual; com login ativo, o progresso é sincronizado com o Supabase e os créditos de IA são consultados pelo backend seguro.</div>
+<div class="footer-note">Seu acesso é individual. Com login ativo, seu progresso é salvo para você continuar de onde parou.</div>
 </div></main>
 </div>
 
@@ -863,58 +854,6 @@ async function backendAuthHeaders(includeJson=false){
 }
 
 
-async function runKeyDiagnostic(){
-  const out=document.getElementById('imageDiagnosticStatus');
-  const b=document.getElementById('keyDiagnosticBtn');
-  b.disabled=true;out.className='pdf-status';out.textContent='Lendo diagnóstico seguro da chave carregada pelo backend...';
-  try{
-    const headers=await backendAuthHeaders(false);
-    const r=await fetch(API_BASE+'/api/key-diagnostic',{headers});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(d.detail||d.error||('HTTP '+r.status));
-    out.className='pdf-status ok';
-    out.textContent='Diagnóstico da chave: '+JSON.stringify(d);
-  }catch(e){out.className='pdf-status err';out.textContent='Falha no diagnóstico da chave: '+(e.message||e)}
-  finally{b.disabled=false}
-}
-
-async function checkImageCapability(){
-  const out=document.getElementById('imageDiagnosticStatus');
-  const b1=document.getElementById('imageCapabilityBtn');
-  const b2=document.getElementById('imageSmokeBtn');
-  b1.disabled=true;b2.disabled=true;out.className='pdf-status';out.textContent='Verificando acesso ao modelo de imagem...';
-  try{
-    const headers=await backendAuthHeaders(false);
-    const r=await fetch(API_BASE+'/api/image-capability',{headers});
-    const d=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(d.detail||d.error||('HTTP '+r.status));
-    const ok=Boolean(d.ok ?? d.available ?? d.access ?? d.model_access ?? false);
-    out.className='pdf-status '+(ok?'ok':'err');
-    out.textContent='Verificação concluída: '+JSON.stringify(d);
-    b2.disabled=!ok;
-  }catch(e){out.className='pdf-status err';out.textContent='Falha na verificação: '+(e.message||e)}
-  finally{b1.disabled=false}
-}
-
-async function runImageSmokeTest(){
-  const out=document.getElementById('imageDiagnosticStatus');
-  const b=document.getElementById('imageSmokeBtn');
-  b.disabled=true;out.className='pdf-status';out.textContent='Testando uma única imagem em qualidade baixa...';
-  try{
-    const headers=await backendAuthHeaders(true);
-    const r=await fetch(API_BASE+'/api/image-smoke-test',{method:'POST',headers,body:JSON.stringify({prompt:'Editorial premium illustration of organized personal finances for a self-employed professional, realistic desk scene, budgeting notebook, calculator and payment cards, dark premium environment with subtle neon green accents, no text, no logos'})});
-    const ct=r.headers.get('content-type')||'';
-    if(!r.ok){let d={};try{d=await r.json()}catch(_e){};throw new Error(d.detail||d.error||('HTTP '+r.status))}
-    if(ct.includes('image/')){
-      const blob=await r.blob(); const url=URL.createObjectURL(blob); const a=document.createElement('a');a.href=url;a.download='teste_imagem_ia.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-      out.className='pdf-status ok';out.textContent='SUCESSO: a API retornou uma imagem. Arquivo de teste enviado para download.';
-    }else{
-      const d=await r.json().catch(()=>({}));out.className='pdf-status ok';out.textContent='Teste concluído: '+JSON.stringify(d);
-    }
-  }catch(e){out.className='pdf-status err';out.textContent='ERRO EXATO DA IMAGEM: '+(e.message||e)}
-  finally{b.disabled=false}
-}
-
 async function loadAIStatus(){
   const el=document.getElementById('aiUsageText');
   if(!activeUser){
@@ -1092,9 +1031,7 @@ async function generateVisualPDF(){
     setTimeout(()=>URL.revokeObjectURL(url),60000);
     state.values.s3_pdf_gerado=true;persist();scheduleCloudSave();refresh();
     status.className='pdf-status ok';
-    const diagText='Imagens IA: '+diag.ai+' | Fallback: '+diag.fallback;
-    status.innerHTML='<b style="color:var(--g)">✓ Produto visual gerado.</b><br>O PDF foi enviado para o download do seu aparelho. Revise o arquivo antes de publicar ou vender.'+
-      '<br><span style="display:inline-block;margin-top:10px;padding:8px 10px;border:1px solid rgba(125,255,0,.35);border-radius:10px;font-size:.88rem;color:#b8c7b8">Diagnóstico visual: <b>'+diagText+'</b> · IA '+(diag.enabled==='true'?'ativada':'desativada')+' · '+diag.version+'</span>';
+    status.innerHTML='<b style="color:var(--g)">✓ Produto visual gerado.</b><br>O PDF foi enviado para o download do seu aparelho. Revise o arquivo antes de publicar ou vender.';
     toast('Produto visual gerado ✓');
     await loadAIStatus();
   }catch(e){
@@ -1136,11 +1073,25 @@ Aprendizados: ${get('s5_resultados')}
  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Resumo_Primeiro_Produto.txt';a.click();URL.revokeObjectURL(a.href)
 }
-function resetAll(){
- if(!confirm('Apagar todos os dados deste teste?'))return;
+async function resetAll(){
+ if(!confirm('Recomeçar o programa e apagar seu progresso atual?'))return;
  localStorage.removeItem(KEY);state=blank();rescueAddon={};
  document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});
- refresh();show('central');toast('Teste reiniciado.')
+ persist();
+ if(supabaseClient && activeUser){
+   try{
+     setCloudStatus('Atualizando seu progresso...');
+     const {error}=await supabaseClient.from('student_progress').upsert(
+       {user_id:activeUser.id,progress:state},{onConflict:'user_id'}
+     );
+     if(error)throw error;
+     setCloudStatus('✓ Progresso reiniciado');
+   }catch(e){
+     console.warn(e);
+     setCloudStatus('Não foi possível atualizar a nuvem agora.',true);
+   }
+ }
+ refresh();show('central');toast('Programa reiniciado.')
 }
 bind();refresh();loadAIStatus();initAuth();
 </script>
