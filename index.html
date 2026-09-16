@@ -466,7 +466,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
   </div>
 </section>
 
-<div class="footer-note">Versão online de teste. Com login ativo, o progresso do aluno é sincronizado com o Supabase e uma cópia local permanece neste aparelho. O controle comercial individual de créditos de IA ainda será conectado ao backend seguro.</div>
+<div class="footer-note">Versão online de teste. Com login ativo, o progresso do aluno é sincronizado com o Supabase e uma cópia local permanece neste aparelho. O login, o progresso em nuvem e a consulta individual de créditos de IA estão conectados ao backend seguro.</div>
 </div></main>
 </div>
 
@@ -508,7 +508,7 @@ async function loadProgressFromCloud(){const user=activeUser||await currentSupab
 async function signInStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Entrando...');const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){setAuthMessage('Não foi possível entrar: '+error.message,true);return}renderAuth(data.user);await loadProgressFromCloud();loadAIStatus();toast('Login realizado ✓')}
 async function signUpStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Criando conta...');const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+window.location.pathname}});if(error){setAuthMessage('Não foi possível criar a conta: '+error.message,true);return}if(data.session){renderAuth(data.user);await loadProgressFromCloud();toast('Conta criada e conectada ✓')}else setAuthMessage('Conta criada. Confirme o e-mail e depois toque em Entrar.')}
 async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
-async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user)await loadProgressFromCloud();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(user&&event==='SIGNED_IN')setTimeout(()=>loadProgressFromCloud(),0)})}
+async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);if(!user)setTimeout(()=>loadAIStatus(),0)})}
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
 function item(label,val){if(!String(val||'').trim())return'';return `<div class="item"><b>${esc(label)}</b><br>${esc(val)}</div>`}
@@ -844,16 +844,32 @@ function rescue(n,type){
 
 const API_BASE = (window.location.protocol==='file:' ? 'http://127.0.0.1:8000' : 'https://primeiro-produto-backend.onrender.com');
 
+async function backendAuthHeaders(includeJson=false){
+  if(!supabaseClient)throw new Error('Supabase indisponível.');
+  const {data:{session},error}=await supabaseClient.auth.getSession();
+  if(error)throw error;
+  if(!session?.access_token)throw new Error('Faça login para usar a IA.');
+  const headers={'Authorization':'Bearer '+session.access_token};
+  if(includeJson)headers['Content-Type']='application/json';
+  return headers;
+}
+
+
 async function loadAIStatus(){
+  const el=document.getElementById('aiUsageText');
+  if(!activeUser){
+    el.innerHTML='<span style="color:var(--warn)">Entre na sua conta para consultar os usos de IA.</span>';
+    return;
+  }
   try{
-    const aiUserId=activeUser?.id||'demo';
-    const r=await fetch(API_BASE+'/api/status?user_id='+encodeURIComponent(aiUserId));
-    if(!r.ok)throw new Error('backend');
-    const d=await r.json();
+    const headers=await backendAuthHeaders(false);
+    const r=await fetch(API_BASE+'/api/status',{headers});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.detail||'Falha ao consultar o backend.');
     const mode=d.provider==='mock'?'modo de teste':'IA conectada';
-    document.getElementById('aiUsageText').innerHTML=`<span style="color:var(--g);font-weight:900">${d.remaining_uses}</span> usos de teste restantes • ${mode}`;
+    el.innerHTML=`<span style="color:var(--g);font-weight:900">${d.remaining_uses}</span> usos restantes • ${mode}`;
   }catch(e){
-    document.getElementById('aiUsageText').innerHTML='<span style="color:var(--warn)">Backend não iniciado.</span> O modo manual continua disponível.';
+    el.innerHTML='<span style="color:var(--warn)">Não foi possível consultar seus usos.</span> '+esc(e.message||'');
   }
 }
 
@@ -874,10 +890,11 @@ async function runAI(stage, action='main'){
   box.style.display='block';
   box.textContent='Analisando com segurança...';
   try{
+    const headers=await backendAuthHeaders(true);
     const r=await fetch(API_BASE+'/api/ai/run',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({user_id:(activeUser?.id||'demo'),stage,action,data:state.values})
+      headers,
+      body:JSON.stringify({stage,action,data:state.values})
     });
     const d=await r.json();
     if(!r.ok)throw new Error(d.detail||'Falha ao usar IA.');
