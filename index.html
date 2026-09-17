@@ -126,8 +126,11 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
       <div class="auth-title">🔐 Acesso do aluno</div><div class="auth-msg" style="margin-bottom:9px">Área exclusiva para alunos com acesso liberado.</div>
       <div id="authLoggedOut">
         <div class="auth-fields"><input id="authEmail" type="email" autocomplete="email" placeholder="Seu e-mail"><input id="authPassword" type="password" autocomplete="current-password" minlength="8" placeholder="Sua senha"></div>
-        <div class="auth-actions"><button class="btn" type="button" onclick="signInStudent()">Entrar</button></div>
-        <div class="auth-msg" id="authMessage">Entre com o acesso liberado para você após a compra.</div>
+        <div class="auth-actions">
+          <button class="btn" type="button" onclick="signInStudent()">Entrar</button>
+          <button class="btn secondary" type="button" onclick="requestFirstAccess()">Primeiro acesso</button>
+        </div>
+        <div class="auth-msg" id="authMessage">Já tem senha? Entre normalmente. Se acabou de comprar, use “Primeiro acesso” com o mesmo e-mail da compra.</div>
       </div>
       <div id="authLoggedIn" style="display:none">
         <div class="auth-user">Conectado como<br><b id="authUserEmail"></b></div>
@@ -491,7 +494,7 @@ let cloudSaveTimer=null;
 let activeUser=null;
 function setAuthMessage(msg,err=false){const el=document.getElementById('authMessage');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
 function setCloudStatus(msg,err=false){const el=document.getElementById('cloudStatus');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
-function renderAuth(user){activeUser=user||null;const a=document.getElementById('authLoggedOut'),b=document.getElementById('authLoggedIn');if(!a||!b)return;a.style.display=user?'none':'block';b.style.display=user?'block':'none';if(user){document.getElementById('authUserEmail').textContent=user.email||'Aluno autenticado';setCloudStatus('Conta conectada • progresso na nuvem')}else setAuthMessage('Entre com o acesso liberado para você após a compra.')}
+function renderAuth(user){activeUser=user||null;const a=document.getElementById('authLoggedOut'),b=document.getElementById('authLoggedIn');if(!a||!b)return;a.style.display=user?'none':'block';b.style.display=user?'block':'none';if(user){document.getElementById('authUserEmail').textContent=user.email||'Aluno autenticado';setCloudStatus('Conta conectada • progresso na nuvem')}else setAuthMessage('Já tem senha? Entre normalmente. Se acabou de comprar, use “Primeiro acesso”.')}
 function scheduleCloudSave(){if(!supabaseClient||!activeUser)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(saveProgressToCloud,900)}
 async function currentSupabaseUser(){if(!supabaseClient)return null;try{const {data:{user}}=await supabaseClient.auth.getUser();activeUser=user||null;return activeUser}catch(e){return null}}
 async function saveProgressToCloud(){const user=activeUser||await currentSupabaseUser();if(!user)return;try{setCloudStatus('Salvando...');const {error}=await supabaseClient.from('student_progress').upsert({user_id:user.id,progress:state},{onConflict:'user_id'});if(error)throw error;setCloudStatus('✓ Progresso salvo na nuvem')}catch(e){console.warn(e);setCloudStatus('Falha ao salvar na nuvem: '+(e.message||'erro'),true)}}
@@ -506,8 +509,38 @@ async function loadProgressFromCloud(){const user=activeUser||await currentSupab
      refresh();setCloudStatus('✓ Progresso carregado da nuvem');return true
    }await saveProgressToCloud();setCloudStatus('✓ Primeiro progresso criado na nuvem');return true}catch(e){console.warn(e);setCloudStatus('Falha ao carregar da nuvem: '+(e.message||'erro'),true);return false}}
 async function signInStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Entrando...');const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){setAuthMessage('Não foi possível entrar: '+error.message,true);return}renderAuth(data.user);await loadProgressFromCloud();loadAIStatus();toast('Login realizado ✓')}
+async function requestFirstAccess(){
+  if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}
+  const email=document.getElementById('authEmail').value.trim().toLowerCase();
+  if(!email){setAuthMessage('Informe o mesmo e-mail usado na compra.',true);return}
+  setAuthMessage('Preparando seu primeiro acesso...');
+  const redirectTo=window.location.origin+window.location.pathname;
+  const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){
+    console.warn(error);
+    // Mensagem neutra: não revela publicamente se um e-mail possui conta.
+    setAuthMessage('Não foi possível enviar o acesso agora. Aguarde alguns minutos e tente novamente.',true);
+    return
+  }
+  setAuthMessage('Se este e-mail possui acesso liberado, você receberá uma mensagem para criar sua senha. Verifique também spam e promoções.');
+}
 async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
-async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);if(!user)setTimeout(()=>loadAIStatus(),0)})}
+async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(event==='PASSWORD_RECOVERY'&&user){setTimeout(()=>completeFirstAccess(),0);return}if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);if(!user)setTimeout(()=>loadAIStatus(),0)})}
+
+async function completeFirstAccess(){
+  const p1=prompt('Crie sua senha de acesso (mínimo 8 caracteres):');
+  if(p1===null)return;
+  if(p1.length<8){alert('A senha precisa ter pelo menos 8 caracteres.');return}
+  const p2=prompt('Digite a nova senha novamente:');
+  if(p2===null)return;
+  if(p1!==p2){alert('As senhas não coincidem. Abra o link do e-mail novamente e tente outra vez.');return}
+  const {data,error}=await supabaseClient.auth.updateUser({password:p1});
+  if(error){alert('Não foi possível criar sua senha: '+error.message);return}
+  renderAuth(data.user||activeUser);
+  await loadProgressFromCloud();
+  await loadAIStatus();
+  toast('Senha criada • acesso liberado ✓');
+}
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
 function item(label,val){if(!String(val||'').trim())return'';return `<div class="item"><b>${esc(label)}</b><br>${esc(val)}</div>`}
