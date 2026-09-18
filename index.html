@@ -91,6 +91,9 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 .auth-title{font-weight:950;color:var(--g);margin-bottom:8px}.auth-fields{display:grid;gap:8px}.auth-card input{padding:10px;font-size:14px}
 .auth-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.auth-actions .btn{padding:9px 11px;font-size:12px}
 .auth-user{font-size:12px;color:#dce5dd;line-height:1.45;word-break:break-word}.auth-msg{font-size:11px;color:var(--mut);line-height:1.4;margin-top:8px}
+.recovery-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.82);backdrop-filter:blur(8px)}
+.recovery-overlay.active{display:flex}.recovery-card{width:min(460px,100%);border:1px solid #4d792f;background:linear-gradient(145deg,#0d1710,#071009);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.recovery-card h2{margin:0 0 8px;color:var(--g);font-size:26px}.recovery-card p{margin:0 0 18px;color:var(--mut);line-height:1.55}.recovery-card .auth-fields{gap:12px}.recovery-card .btn{width:100%;margin-top:14px}.recovery-status{min-height:20px;margin-top:12px;color:var(--mut);font-size:13px;line-height:1.45}.recovery-status.error{color:var(--danger)}
 
 @media(max-width:900px){
  .shell{grid-template-columns:1fr}
@@ -139,6 +142,19 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
       </div>
     </div>
 </aside>
+
+<div class="recovery-overlay" id="recoveryOverlay" role="dialog" aria-modal="true" aria-labelledby="recoveryTitle">
+  <div class="recovery-card">
+    <h2 id="recoveryTitle">Crie sua nova senha</h2>
+    <p>Escolha uma senha com pelo menos 8 caracteres para concluir seu acesso ao programa.</p>
+    <div class="auth-fields">
+      <input id="recoveryPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Nova senha">
+      <input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="Confirme a nova senha">
+    </div>
+    <button class="btn" id="recoverySubmit" type="button" onclick="completeFirstAccess()">SALVAR NOVA SENHA</button>
+    <div class="recovery-status" id="recoveryStatus" aria-live="polite"></div>
+  </div>
+</div>
 
 <main class="main"><div class="wrap">
 
@@ -480,6 +496,8 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 /* SUPABASE: use apenas URL + chave PUBLICÁVEL. Nunca use sb_secret_ aqui. */
 const SUPABASE_URL='https://fcpmqfeeaozowwkmgajq.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_lGqMOKFxYpZMen_TvMKx9A_jJ3uazKl';
+const recoveryParams=new URLSearchParams(window.location.hash.replace(/^#/,''));
+const IS_PASSWORD_RECOVERY=recoveryParams.get('type')==='recovery'||new URLSearchParams(window.location.search).get('type')==='recovery';
 const supabaseReady=SUPABASE_URL.startsWith('https://')&&!SUPABASE_URL.includes('COLE_AQUI')&&SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_');
 const supabaseClient=supabaseReady?window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
 
@@ -525,20 +543,36 @@ async function requestFirstAccess(){
   setAuthMessage('Se este e-mail possui acesso liberado, você receberá uma mensagem para criar sua senha. Verifique também spam e promoções.');
 }
 async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
-async function initAuth(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const {data:{session}}=await supabaseClient.auth.getSession();renderAuth(session?.user||null);if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();supabaseClient.auth.onAuthStateChange((event,session)=>{const user=session?.user||null;renderAuth(user);if(event==='PASSWORD_RECOVERY'&&user){setTimeout(()=>completeFirstAccess(),0);return}if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);if(!user)setTimeout(()=>loadAIStatus(),0)})}
+function showRecoveryForm(){const overlay=document.getElementById('recoveryOverlay');if(overlay){overlay.classList.add('active');document.body.style.overflow='hidden';setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50)}}
+function setRecoveryStatus(msg,err=false){const el=document.getElementById('recoveryStatus');if(el){el.textContent=msg;el.classList.toggle('error',err)}}
+async function initAuth(){
+  if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}
+  supabaseClient.auth.onAuthStateChange((event,session)=>{
+    const user=session?.user||null;
+    renderAuth(user);
+    if((event==='PASSWORD_RECOVERY'||IS_PASSWORD_RECOVERY)&&user){setTimeout(showRecoveryForm,0);return}
+    if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);
+    if(!user)setTimeout(()=>loadAIStatus(),0)
+  });
+  const {data:{session}}=await supabaseClient.auth.getSession();
+  renderAuth(session?.user||null);
+  if(IS_PASSWORD_RECOVERY&&session?.user)showRecoveryForm();
+  if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();
+}
 
 async function completeFirstAccess(){
-  const p1=prompt('Crie sua senha de acesso (mínimo 8 caracteres):');
-  if(p1===null)return;
-  if(p1.length<8){alert('A senha precisa ter pelo menos 8 caracteres.');return}
-  const p2=prompt('Digite a nova senha novamente:');
-  if(p2===null)return;
-  if(p1!==p2){alert('As senhas não coincidem. Abra o link do e-mail novamente e tente outra vez.');return}
+  const p1=document.getElementById('recoveryPassword').value;
+  const p2=document.getElementById('recoveryPasswordConfirm').value;
+  if(p1.length<8){setRecoveryStatus('A senha precisa ter pelo menos 8 caracteres.',true);return}
+  if(p1!==p2){setRecoveryStatus('As senhas não coincidem. Confira e tente novamente.',true);return}
+  const btn=document.getElementById('recoverySubmit');btn.disabled=true;btn.textContent='SALVANDO...';setRecoveryStatus('Atualizando sua senha com segurança...');
   const {data,error}=await supabaseClient.auth.updateUser({password:p1});
-  if(error){alert('Não foi possível criar sua senha: '+error.message);return}
+  if(error){setRecoveryStatus('Não foi possível criar sua senha. Solicite um novo e-mail e tente novamente.',true);btn.disabled=false;btn.textContent='SALVAR NOVA SENHA';return}
   renderAuth(data.user||activeUser);
   await loadProgressFromCloud();
   await loadAIStatus();
+  history.replaceState(null,'',window.location.pathname+window.location.search.replace(/([?&])type=recovery(&|$)/,'$1').replace(/[?&]$/,''));
+  document.getElementById('recoveryOverlay').classList.remove('active');document.body.style.overflow='';
   toast('Senha criada • acesso liberado ✓');
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
