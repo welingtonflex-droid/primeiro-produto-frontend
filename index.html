@@ -93,7 +93,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
 .auth-user{font-size:12px;color:#dce5dd;line-height:1.45;word-break:break-word}.auth-msg{font-size:11px;color:var(--mut);line-height:1.4;margin-top:8px}
 .recovery-overlay{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.82);backdrop-filter:blur(8px)}
 .recovery-overlay.active{display:flex}.recovery-card{width:min(460px,100%);border:1px solid #4d792f;background:linear-gradient(145deg,#0d1710,#071009);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.55)}
-.recovery-card h2{margin:0 0 8px;color:var(--g);font-size:26px}.recovery-card p{margin:0 0 18px;color:var(--mut);line-height:1.55}.recovery-card .auth-fields{gap:12px}.recovery-card .btn{width:100%;margin-top:14px}.recovery-status{min-height:20px;margin-top:12px;color:var(--mut);font-size:13px;line-height:1.45}.recovery-status.error{color:var(--danger)}
+.recovery-card h2{margin:0 0 8px;color:var(--g);font-size:26px}.recovery-card p{margin:0 0 18px;color:var(--mut);line-height:1.55}.recovery-card .auth-fields{gap:12px}.recovery-card .btn{width:100%;margin-top:14px}.recovery-card .recovery-cancel{background:transparent;color:var(--mut);border:1px solid var(--line);margin-top:8px}.recovery-status{min-height:20px;margin-top:12px;color:var(--mut);font-size:13px;line-height:1.45}.recovery-status.error{color:var(--danger)}
 
 @media(max-width:900px){
  .shell{grid-template-columns:1fr}
@@ -152,6 +152,7 @@ input:focus,textarea:focus,select:focus{border-color:#56843a}
       <input id="recoveryPasswordConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="Confirme a nova senha">
     </div>
     <button class="btn" id="recoverySubmit" type="button" onclick="completeFirstAccess()">SALVAR NOVA SENHA</button>
+    <button class="btn recovery-cancel" id="recoveryCancel" type="button" onclick="cancelRecovery()">CANCELAR E VOLTAR AO INÍCIO</button>
     <div class="recovery-status" id="recoveryStatus" aria-live="polite"></div>
   </div>
 </div>
@@ -545,6 +546,12 @@ async function requestFirstAccess(){
 async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
 function showRecoveryForm(){const overlay=document.getElementById('recoveryOverlay');if(overlay){overlay.classList.add('active');document.body.style.overflow='hidden';setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50)}}
 function setRecoveryStatus(msg,err=false){const el=document.getElementById('recoveryStatus');if(el){el.textContent=msg;el.classList.toggle('error',err)}}
+function clearRecoveryUrl(){history.replaceState(null,'',window.location.pathname)}
+async function cancelRecovery(){
+  const btn=document.getElementById('recoveryCancel');btn.disabled=true;btn.textContent='SAINDO...';
+  try{if(supabaseClient)await supabaseClient.auth.signOut()}catch(e){console.warn(e)}
+  clearRecoveryUrl();window.location.reload();
+}
 async function initAuth(){
   if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}
   supabaseClient.auth.onAuthStateChange((event,session)=>{
@@ -566,14 +573,32 @@ async function completeFirstAccess(){
   if(p1.length<8){setRecoveryStatus('A senha precisa ter pelo menos 8 caracteres.',true);return}
   if(p1!==p2){setRecoveryStatus('As senhas não coincidem. Confira e tente novamente.',true);return}
   const btn=document.getElementById('recoverySubmit');btn.disabled=true;btn.textContent='SALVANDO...';setRecoveryStatus('Atualizando sua senha com segurança...');
-  const {data,error}=await supabaseClient.auth.updateUser({password:p1});
-  if(error){setRecoveryStatus('Não foi possível criar sua senha. Solicite um novo e-mail e tente novamente.',true);btn.disabled=false;btn.textContent='SALVAR NOVA SENHA';return}
-  renderAuth(data.user||activeUser);
-  await loadProgressFromCloud();
-  await loadAIStatus();
-  history.replaceState(null,'',window.location.pathname+window.location.search.replace(/([?&])type=recovery(&|$)/,'$1').replace(/[?&]$/,''));
-  document.getElementById('recoveryOverlay').classList.remove('active');document.body.style.overflow='';
-  toast('Senha criada • acesso liberado ✓');
+  try{
+    const {data,error}=await supabaseClient.auth.updateUser({password:p1});
+    if(error){
+      const message=String(error.message||'').toLowerCase();
+      if(message.includes('different from the old password')||message.includes('same password')){
+        setRecoveryStatus('A nova senha não pode ser igual à senha anterior. Escolha uma senha diferente.',true);
+        document.getElementById('recoveryPassword').value='';document.getElementById('recoveryPasswordConfirm').value='';document.getElementById('recoveryPassword').focus();
+      }else if(message.includes('session')||message.includes('expired')||message.includes('token')){
+        setRecoveryStatus('Este link expirou ou já foi usado. Cancele e solicite um novo e-mail de redefinição.',true);
+      }else{
+        setRecoveryStatus('Não foi possível atualizar a senha agora. Confira os dados e tente novamente.',true);
+      }
+      return
+    }
+    renderAuth(data.user||activeUser);
+    await loadProgressFromCloud();
+    await loadAIStatus();
+    clearRecoveryUrl();
+    document.getElementById('recoveryPassword').value='';document.getElementById('recoveryPasswordConfirm').value='';
+    document.getElementById('recoveryOverlay').classList.remove('active');document.body.style.overflow='';
+    toast('Senha criada • acesso liberado ✓');
+  }catch(e){
+    console.warn(e);setRecoveryStatus('A conexão falhou. Sua senha não foi alterada; tente novamente.',true);
+  }finally{
+    btn.disabled=false;btn.textContent='SALVAR NOVA SENHA';
+  }
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(()=>t.style.display='none',2200)}
