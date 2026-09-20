@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="4%" r="80%"><stop offset="0" stop-color="#7cff00" stop-opacity=".25"/><stop offset="1" stop-color="#050806" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#050806"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect x="68" y="64" width="260" height="48" rx="24" fill="#0a130b" stroke="#7cff00"/>
+  <text x="198" y="96" text-anchor="middle" fill="#7cff00" font-family="Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="3">PROGRAMA PRÁTICO</text>
+  <text x="68" y="218" fill="#f5f7f5" font-family="Arial, sans-serif" font-size="72" font-weight="900">DO ZERO AO</text>
+  <text x="68" y="306" fill="#7cff00" font-family="Arial, sans-serif" font-size="82" font-weight="900">PRIMEIRO PRODUTO</text>
+  <text x="68" y="385" fill="#c7cfc8" font-family="Arial, sans-serif" font-size="34">Transforme sua experiência em um produto digital.</text>
+  <text x="68" y="466" fill="#f5f7f5" font-family="Arial, sans-serif" font-size="28" font-weight="700">5 etapas  •  10 créditos iniciais de IA  •  R$ 67</text>
+  <rect x="68" y="518" width="505" height="66" rx="14" fill="#7cff00"/>
+  <text x="321" y="560" text-anchor="middle" fill="#061006" font-family="Arial, sans-serif" font-size="25" font-weight="900">CRIE SEU PRIMEIRO PRODUTO</text>
+</svg>

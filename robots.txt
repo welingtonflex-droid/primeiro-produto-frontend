@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /vendas.html
+Disallow: /
+
+Sitemap: https://dozeroaoprimeiroproduto.com.br/sitemap.xml
