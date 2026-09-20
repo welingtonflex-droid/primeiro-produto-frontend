@@ -526,17 +526,20 @@ function get(id){return state.values[id]??''}
 function setv(id,v){state.values[id]=v;persist();scheduleCloudSave()}
 let cloudSaveTimer=null;
 let activeUser=null;
+let accessGranted=false;
 function setAuthMessage(msg,err=false){const el=document.getElementById('authMessage');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
 function setCloudStatus(msg,err=false){const el=document.getElementById('cloudStatus');if(el){el.textContent=msg;el.style.color=err?'var(--danger)':'var(--mut)'}}
 function renderAuth(user){
  activeUser=user||null;
+ if(!user)accessGranted=false;
  const a=document.getElementById('authLoggedOut'),b=document.getElementById('authLoggedIn');
  const gate=document.getElementById('accessGate'),program=document.getElementById('programContent');
+ const unlocked=!!user&&accessGranted;
  if(!a||!b)return;
  a.style.display=user?'none':'block';b.style.display=user?'block':'none';
- if(gate)gate.hidden=!!user;if(program)program.hidden=!user;
- document.querySelectorAll('.nav button').forEach(btn=>{btn.disabled=!user;btn.setAttribute('aria-disabled',String(!user))});
- if(user){document.getElementById('authUserEmail').textContent=user.email||'Aluno autenticado';setCloudStatus('Conta conectada • progresso na nuvem')}
+ if(gate)gate.hidden=unlocked;if(program)program.hidden=!unlocked;
+ document.querySelectorAll('.nav button').forEach(btn=>{btn.disabled=!unlocked;btn.setAttribute('aria-disabled',String(!unlocked))});
+ if(user){document.getElementById('authUserEmail').textContent=user.email||'Aluno autenticado';setCloudStatus(unlocked?'Acesso confirmado • progresso na nuvem':'Confirmando sua compra...')}
  else setAuthMessage('Já tem senha? Entre normalmente. Se acabou de comprar, use “Primeiro acesso”.')
 }
 function scheduleCloudSave(){if(!supabaseClient||!activeUser)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(saveProgressToCloud,900)}
@@ -552,7 +555,7 @@ async function loadProgressFromCloud(){const user=activeUser||await currentSupab
      document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=!!get(el.id);else el.value=get(el.id)});
      refresh();setCloudStatus('✓ Progresso carregado da nuvem');return true
    }await saveProgressToCloud();setCloudStatus('✓ Primeiro progresso criado na nuvem');return true}catch(e){console.warn(e);setCloudStatus('Falha ao carregar da nuvem: '+(e.message||'erro'),true);return false}}
-async function signInStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Entrando...');const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){setAuthMessage('Não foi possível entrar: '+error.message,true);return}renderAuth(data.user);await loadProgressFromCloud();loadAIStatus();toast('Login realizado ✓')}
+async function signInStudent(){if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){setAuthMessage('Informe e-mail e senha com pelo menos 8 caracteres.',true);return}setAuthMessage('Entrando...');const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error){setAuthMessage('Não foi possível entrar: '+error.message,true);return}accessGranted=false;renderAuth(data.user);if(await verifyEntitlement()){await loadProgressFromCloud();await loadAIStatus();toast('Login realizado ✓')}}
 async function requestFirstAccess(){
   if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}
   const email=document.getElementById('authEmail').value.trim().toLowerCase();
@@ -568,7 +571,7 @@ async function requestFirstAccess(){
   }
   setAuthMessage('Se este e-mail possui acesso liberado, você receberá uma mensagem para criar sua senha. Verifique também spam e promoções.');
 }
-async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
+async function signOutStudent(){if(!supabaseClient)return;const {error}=await supabaseClient.auth.signOut();if(error){setCloudStatus('Não foi possível sair: '+error.message,true);return}activeUser=null;accessGranted=false;renderAuth(null);state=blank();persist();document.querySelectorAll('[data-save]').forEach(el=>{if(el.type==='checkbox')el.checked=false;else el.value=''});refresh();loadAIStatus();toast('Você saiu da conta.')}
 function showRecoveryForm(){const overlay=document.getElementById('recoveryOverlay');if(overlay){overlay.classList.add('active');document.body.style.overflow='hidden';setTimeout(()=>document.getElementById('recoveryPassword')?.focus(),50)}}
 function setRecoveryStatus(msg,err=false){const el=document.getElementById('recoveryStatus');if(el){el.textContent=msg;el.classList.toggle('error',err)}}
 function clearRecoveryUrl(){history.replaceState(null,'',window.location.pathname)}
@@ -581,15 +584,17 @@ async function initAuth(){
   if(!supabaseClient){setAuthMessage('Supabase indisponível.',true);return}
   supabaseClient.auth.onAuthStateChange((event,session)=>{
     const user=session?.user||null;
+    accessGranted=false;
     renderAuth(user);
     if((event==='PASSWORD_RECOVERY'||IS_PASSWORD_RECOVERY)&&user){setTimeout(showRecoveryForm,0);return}
-    if(user&&event==='SIGNED_IN')setTimeout(async()=>{await loadProgressFromCloud();await loadAIStatus()},0);
+    if(user&&event==='SIGNED_IN')setTimeout(async()=>{if(await verifyEntitlement()){await loadProgressFromCloud();await loadAIStatus()}},0);
     if(!user)setTimeout(()=>loadAIStatus(),0)
   });
   const {data:{session}}=await supabaseClient.auth.getSession();
+  accessGranted=false;
   renderAuth(session?.user||null);
   if(IS_PASSWORD_RECOVERY&&session?.user)showRecoveryForm();
-  if(session?.user){await loadProgressFromCloud();await loadAIStatus();}else await loadAIStatus();
+  if(session?.user){if(await verifyEntitlement()){await loadProgressFromCloud();await loadAIStatus();}}else await loadAIStatus();
 }
 
 async function completeFirstAccess(){
@@ -612,7 +617,12 @@ async function completeFirstAccess(){
       }
       return
     }
+    accessGranted=false;
     renderAuth(data.user||activeUser);
+    if(!await verifyEntitlement()){
+      setRecoveryStatus('Senha criada, mas a compra ainda não foi confirmada para este e-mail.',true);
+      return
+    }
     await loadProgressFromCloud();
     await loadAIStatus();
     clearRecoveryUrl();
@@ -969,6 +979,28 @@ async function backendAuthHeaders(includeJson=false){
   const headers={'Authorization':'Bearer '+session.access_token};
   if(includeJson)headers['Content-Type']='application/json';
   return headers;
+}
+
+async function verifyEntitlement(){
+  if(!activeUser){accessGranted=false;renderAuth(null);return false}
+  try{
+    const headers=await backendAuthHeaders(false);
+    const r=await fetch(API_BASE+'/api/entitlement',{headers});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.detail||'Não foi possível confirmar sua compra.');
+    accessGranted=!!d.active;
+    renderAuth(activeUser);
+    if(!accessGranted){
+      setCloudStatus('Compra não localizada para este e-mail. Use o mesmo e-mail da Hotmart.',true);
+      setAuthMessage('Acesso não liberado para esta conta.',true);
+    }
+    return accessGranted;
+  }catch(e){
+    accessGranted=false;
+    renderAuth(activeUser);
+    setCloudStatus(e.message||'Não foi possível confirmar sua compra.',true);
+    return false;
+  }
 }
 
 
